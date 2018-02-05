@@ -6,9 +6,10 @@
         xmlns:local="clr-namespace:LogOut"
         mc:Ignorable="d" Height="200" Width="525" Closing="Window_Closing">
     <Grid>
-        <Button x:Name="Button_SetKey" Content="Set hotkey" HorizontalAlignment="Left" Margin="10,99,0,0" VerticalAlignment="Top" Width="77" Click="Button_SetKey_Click" IsEnabled="False"/>
-        <TextBox x:Name="TextBox_Console" TextWrapping="Wrap" VerticalAlignment="Top" AllowDrop="False" VerticalScrollBarVisibility="Visible" IsReadOnly="True" IsUndoEnabled="False" FontFamily="Consolas" Height="64" Margin="10"/>
-        <CheckBox x:Name="CheckBox_Minimized" Content="Work minimized" HorizontalAlignment="Left" Margin="10,79,0,0" VerticalAlignment="Top" IsEnabled="False"/>
+        <TextBox x:Name="TextBox_Console" TextWrapping="Wrap" VerticalAlignment="Top" AllowDrop="False" VerticalScrollBarVisibility="Visible" IsReadOnly="True" IsUndoEnabled="False" FontFamily="Consolas" Height="100" Margin="10,10,10,0"/>
+        <Grid Height="38"  VerticalAlignment="Bottom" Background="White" />
+        <Button x:Name="Button_SetKey" Content="Set hotkey" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="77" Click="Button_SetKey_Click" IsEnabled="False"/>
+        <CheckBox x:Name="CheckBox_Minimized" Content="Work minimized" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" IsEnabled="False"/>
 
     </Grid>
 </Window>

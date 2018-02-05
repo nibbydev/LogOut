@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Linq;
 using System.Security.Principal;
+using System.Windows.Forms;
 
 namespace LogOut {
     /// <summary>
@@ -14,12 +15,12 @@ namespace LogOut {
         private IntPtr client_hWnd;
         private uint processId;
         private const string GAME_WINDOW_TITLE = "Path of Exile";
-        private const string APP_WINDOW_TITLE = "TCP Disconnect v0.1";
+        private const string APP_WINDOW_TITLE = "TCP Disconnect v0.2";
 
         /// <summary>
         /// Utility methods for getting handles and stuffs
         /// </summary>
-        sealed class Win128 {
+        sealed class Win32 {
             [DllImport("user32.dll", SetLastError = true)]
             static public extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
@@ -50,7 +51,7 @@ namespace LogOut {
         }
 
         /// <summary>
-        /// Made by from /u/Umocrajen
+        /// Made by /u/Umocrajen
         /// </summary>
         sealed class KillTCP {
             [DllImport("iphlpapi.dll", SetLastError = true)]
@@ -130,9 +131,6 @@ namespace LogOut {
             // Set window title
             Title = APP_WINDOW_TITLE;
 
-            // Warn user on no admin rights
-            if (!Win128.checkElevation()) Log("TCP disconnect will not function without elevated access", 1);
-
             // Print credentials
             Log(APP_WINDOW_TITLE + " by Siegrest", 0);
 
@@ -141,8 +139,10 @@ namespace LogOut {
             KeyboardHook.KeyBoardAction += eventHandler;
             KeyboardHook.Start();
 
+            // Warn user on no admin rights
+            if (!Win32.checkElevation()) Log("Elevated access required for disconnect", 1);
+
             // Run task to find application handle
-            Log("Waiting for PoE process", 0);
             System.Threading.Tasks.Task.Run(() => FindGameTask());
         }
 
@@ -150,18 +150,31 @@ namespace LogOut {
         /// Get application's handler and PID
         /// </summary>
         private void FindGameTask() {
+            bool runOnce = true;
             // Run every 100ms and attempt to find game client
             while (true) {
-                System.Threading.Thread.Sleep(1000);
-
                 // Get process handler from name
                 foreach (Process pList in Process.GetProcesses()) {
-                    if (pList.MainWindowTitle == GAME_WINDOW_TITLE) client_hWnd = pList.MainWindowHandle;
+                    if (pList.MainWindowTitle == GAME_WINDOW_TITLE)
+                        client_hWnd = pList.MainWindowHandle;
                 }
-                if (client_hWnd == null) continue;
+                
+                // If PoE is not running
+                if (client_hWnd == IntPtr.Zero) {
+                    // If first run print text
+                    if (runOnce) {
+                        Dispatcher.Invoke(new Action(() => {
+                            Log("Waiting for PoE process...", 0);
+                        }));
+                        runOnce = false;
+                    }
+
+                    System.Threading.Thread.Sleep(1000);
+                    continue;
+                }
 
                 // Get window PID from handler
-                Win128.GetWindowThreadProcessId(client_hWnd, out processId);
+                Win32.GetWindowThreadProcessId(client_hWnd, out processId);
                 if (processId <= 0) continue;
 
                 break;
@@ -171,7 +184,7 @@ namespace LogOut {
             Dispatcher.Invoke(new Action(() => {
                 Button_SetKey.IsEnabled = true;
                 CheckBox_Minimized.IsEnabled = true;
-                Log("PoE process found", 0);
+                if (!runOnce) Log("PoE process found", 0);
             }));
         }
 
@@ -184,13 +197,13 @@ namespace LogOut {
             if (KeyboardHook.flag_saveKey) {
                 KeyboardHook.flag_saveKey = false;
                 Button_SetKey.IsEnabled = true;
-                Log("Assigned TCP disconnect to key: " + KeyboardHook.KEY, 0);
+                Log("Assigned TCP disconnect to key: " + (Keys)KeyboardHook.KEY, 0);
                 return;
             }
 
             // Don't send disconnect if game is minimized and checkbox is not ticked
             if (!(bool)CheckBox_Minimized.IsChecked) {
-                if (Win128.GetTopmostWindowTitle() != GAME_WINDOW_TITLE) return;
+                if (Win32.GetTopmostWindowTitle() != GAME_WINDOW_TITLE) return;
             }
 
             // Send disconnect signal
