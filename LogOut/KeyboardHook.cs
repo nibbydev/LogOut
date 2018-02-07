@@ -9,10 +9,8 @@ namespace LogOut {
         private static LowLevelKeyboardProc _proc = HookCallback;
         private static IntPtr _hookID = IntPtr.Zero;
         
-        public static volatile bool flag_saveKey = false;
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x100;
-        public static int KEY;
 
         public static void Start() { _hookID = SetHook(_proc); }
         public static void Stop() { UnhookWindowsHookEx(_hookID); }
@@ -26,8 +24,8 @@ namespace LogOut {
 
         private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam) {
             if (nCode >= 0 && wParam == (IntPtr) WM_KEYDOWN) {
-                if (flag_saveKey) KEY = Marshal.ReadInt32(lParam);
-                if (Marshal.ReadInt32(lParam) == KEY) KeyBoardAction?.Invoke(null, new EventArgs());
+                if (Settings.saveKey) Settings.logOutHotKey = Marshal.ReadInt32(lParam);
+                if (Marshal.ReadInt32(lParam) == Settings.logOutHotKey) KeyBoardAction?.Invoke(null, new EventArgs());
             }
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
