@@ -7,23 +7,23 @@ namespace LogOut {
         public static Size screenShotSize;
         public static double health;
 
+        private static Bitmap currentHealthBitMap;
+        private static Graphics screenGraph;
+
         public HealthManager () {
             screenShotSize = new Size();
         }
 
         /// <summary>
-        /// Capture a 1 pixel wide centered vertical screenshot of the health globe
+        /// Capture a x pixel wide centered vertical screenshot of the health globe
+        /// Saves it to currentHealthBitMap
         /// </summary>
         /// <returns>The captured image</returns>
-        public static Bitmap GetHealthImage() {
-            Bitmap screenshot = new Bitmap(Settings.healthWidth, Settings.area_size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            Graphics screenGraph = Graphics.FromImage(screenshot);
+        public static void GetHealthImage() {
             screenGraph.CopyFromScreen(Settings.area_left, Settings.area_top, 0, 0, screenShotSize, CopyPixelOperation.SourceCopy);
 
-            // Can save the screenshot but there's no need
-            //screenshot.Save("Screenshot.png", Imaging.ImageFormat.Png);
-
-            return screenshot;
+            // Can save the screenshot that was taken but there's no need
+            //currentHealthBitMap.Save("Screenshot.png", Imaging.ImageFormat.Png);
         }
 
         /// <summary>
@@ -33,24 +33,25 @@ namespace LogOut {
         public static double GetHealthAsPercentage() {
             if (fullHealthBitMap == null || Settings.area_size < 1) return -1;
 
-            // Get screenshot of current health globe
-            Bitmap currentHealthBitMap = GetHealthImage();
+            // Take a screenshot of the health bar and save it to currentHealthBitMap
+            GetHealthImage();
 
             int change = 0;
             // Compare all the pixels of the current map versus the full health one
+            // And by all I mean just the red ones. 
             for (int i = 0; i < Settings.area_size; i++) {
                 for (int j = 0; j < Settings.healthWidth; j++) {
-                    if (fullHealthBitMap.GetPixel(j, i).R != currentHealthBitMap.GetPixel(j, i).R)
+                    if (fullHealthBitMap.GetPixel(j, i).R != currentHealthBitMap.GetPixel(j, i).R) {
                         change++;
+                    }
                 }
-                
             }
-
+                
             // TODO: find a better solution
             double temp = Settings.area_size;
 
             // Return the percentage of health remaining
-            return 100 - (change / Settings.healthWidth) / temp * 100.0;
+            return 100 - (change / Settings.healthWidth) / temp * 100;
         }
 
         /// <summary>
@@ -119,7 +120,15 @@ namespace LogOut {
         /// Saves the current health state as full
         /// </summary>
         public static void SaveFullHealthState() {
-            fullHealthBitMap = GetHealthImage();
+            // Create a new instance of Bitmap and Graphics (the size might have changed)
+            currentHealthBitMap = new Bitmap(Settings.healthWidth, Settings.area_size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            screenGraph = Graphics.FromImage(currentHealthBitMap);
+
+            // Take a screenshot of the health bar and save it to currentHealthBitMap
+            GetHealthImage();
+
+            // Write the currentHealthBitMap to fullHealthBitMap and presume that's what 100% health looks like
+            fullHealthBitMap = new Bitmap(currentHealthBitMap);
         }
     }
 }

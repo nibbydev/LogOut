@@ -43,7 +43,9 @@ namespace LogOut {
             TcpTableOwnerModuleAll
         }
 
-        public static void KillTCPConnectionForProcess() {
+        public static long KillTCPConnectionForProcess() {
+            long startTime = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
             MibTcprowOwnerPid[] table;
             var afInet = 2;
             var buffSize = 0;
@@ -52,7 +54,7 @@ namespace LogOut {
 
             try {
                 uint statusCode = GetExtendedTcpTable(buffTable, ref buffSize, true, afInet, TcpTableClass.TcpTableOwnerPidAll);
-                if (statusCode != 0) return;
+                if (statusCode != 0) return -1;
 
                 var tab = (MibTcptableOwnerPid)Marshal.PtrToStructure(buffTable, typeof(MibTcptableOwnerPid));
                 var rowPtr = (IntPtr)((long)buffTable + Marshal.SizeOf(tab.dwNumEntries));
@@ -74,6 +76,8 @@ namespace LogOut {
             var ptr = Marshal.AllocCoTaskMem(Marshal.SizeOf(PathConnection));
             Marshal.StructureToPtr(PathConnection, ptr, false);
             SetTcpEntry(ptr);
+
+            return DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - startTime;
         }
     }
 

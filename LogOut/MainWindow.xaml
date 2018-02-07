@@ -9,7 +9,7 @@
         <TextBox x:Name="TextBox_Console" TextWrapping="Wrap" VerticalAlignment="Top" AllowDrop="False" VerticalScrollBarVisibility="Visible" IsReadOnly="True" IsUndoEnabled="False" FontFamily="Consolas" Height="100" Margin="10,10,10,0"/>
         <Grid Height="38"  VerticalAlignment="Bottom" Background="White" >
             <Button x:Name="Button_SaveHealth" Content="Save Health" HorizontalAlignment="Right" Margin="0,0,92,10" VerticalAlignment="Bottom" Width="75" Click="Button_SaveHealth_Click"/>
-            <Button x:Name="Button_SetKey" Content="Set hotkey" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="77" Click="Button_SetKey_Click" IsEnabled="False"/>
+            <Button x:Name="Button_SetHotkey" Content="Set hotkey" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="77" Click="Button_SetHotkey_Click" IsEnabled="False"/>
             <Button x:Name="Button_Settings" Content="Settings" HorizontalAlignment="Left" Margin="10,0,0,10" VerticalAlignment="Bottom" Width="75" Click="Button_Settings_Click"/>
         </Grid>
 

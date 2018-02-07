@@ -4,6 +4,13 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Threading.Tasks;
 
+/*
+changelog:
+    add: comments, tons and tons of comments
+    change(eh): tcp killing method returns delay (ms)
+    fix: bitmap memory leak
+*/
+
 namespace LogOut {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -13,10 +20,13 @@ namespace LogOut {
         private IntPtr client_hWnd;
         private HealthOverlayWindow healthOverlayWindow;
         private SettingsWindow settingsWindow;
-        private Task healthThread;
+
+        private Task findGame_Task;
+        private Task pollHealth_Task;
+        private Task positionHealthOverlay_Task;
 
         /// <summary>
-        /// Initialize elements
+        /// Initializes elements
         /// </summary>
         public MainWindow() {
             InitializeComponent();
@@ -35,21 +45,27 @@ namespace LogOut {
             // Warn user on no admin rights
             if (!Win32.CheckElevation()) Log("Elevated access required for disconnect", 1);
 
-            // Run task to find application handle
-            Task.Run(() => FindGameTask());
+            // Run task to find application handle. Runs until game handle is found
+            findGame_Task = Task.Run(() => FindGame_Task());
 
-            // Init HealthOverlay
+            // Run task to find application coordinates. Runs until program exits
+            positionHealthOverlay_Task = new Task(() => PositionHealthOverlay_Task());
+
+            // Define new instances of settings window and health overlay window
             healthOverlayWindow = new HealthOverlayWindow();
-
-            // Init settings window
             settingsWindow = new SettingsWindow();
         }
 
         /// <summary>
-        /// Get application's handler and PID
+        /// Taks that gets application's handler and PID
+        /// Runs until those are found
+        /// Starts the positionHealthOverlay_Task task
         /// </summary>
-        private void FindGameTask() {
+        private void FindGame_Task() {
+            // Flag that allows us to print messages like "Waiting for PoE process..."
+            // only if the game is not running
             bool runOnce = true; 
+
             // Run every x ms and attempt to find game client
             while (true) {
                 // Get process handler from name
@@ -61,8 +77,8 @@ namespace LogOut {
                 if (client_hWnd == IntPtr.Zero) {
                     // If first run print text
                     if (runOnce) {
-                        Dispatcher.Invoke(() => { Log("Waiting for PoE process...", 0); });
                         runOnce = false;
+                        Dispatcher.Invoke(() => Log("Waiting for PoE process...", 0));
                     }
 
                     System.Threading.Thread.Sleep(Settings.findGameTaskDelayMS);
@@ -71,6 +87,7 @@ namespace LogOut {
 
                 // Get window PID from handler
                 Win32.GetWindowThreadProcessId(client_hWnd, out Settings.processId);
+                // Not 100% sure if needed but I'll keep it here just to be safe
                 if (Settings.processId <= 0) continue;
 
                 break;
@@ -78,16 +95,24 @@ namespace LogOut {
 
             // Invoke dispatcher, allowing UI element updates
             Dispatcher.Invoke(() => {
-                Button_SetKey.IsEnabled = true;
+                // Enable hotkey button
+                Button_SetHotkey.IsEnabled = true;
+
+                // If runOnce was lowered that means when the app was launched PoE was not running
+                // and the message "Waiting for PoE process..." was displayed. So, naturally we need
+                // to inform the user that the processs has been found now
                 if (!runOnce) Log("PoE process found", 0);
             });
 
-            // Run task to find application coordinates
-            Task.Run(() => PositionHealthOverlay_Task());
+            // Now that the game handle has been found, start a task that calculates the health globe's
+            // position
+            positionHealthOverlay_Task.Start();
         }
 
         /// <summary>
-        /// Task run in the background. Finds coordinates of game's window and fits a rectangle over the health bar
+        /// Task that's run in the background from launch until program exit
+        /// Finds coordinates of game's window and does area calculations
+        /// Reacts to window position/size changes
         /// </summary>
         private void PositionHealthOverlay_Task() {
             Win32.WinPos lastWinPos = new Win32.WinPos();
@@ -127,16 +152,16 @@ namespace LogOut {
                 System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
             }
         }
-        
+
         /// <summary>
-        /// Keyboard event handler. Fires when "registred hotkey" is pressed
+        /// Keyboard event handler. Fires when the hotkey is pressed
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Event_keyboard(object sender, EventArgs e) {
             if (Settings.saveKey) {
                 Settings.saveKey = false;
-                Button_SetKey.IsEnabled = true;
+                Button_SetHotkey.IsEnabled = true;
                 Log("Assigned TCP disconnect to key: " + (Keys)Settings.logOutHotKey, 0);
                 return;
             }
@@ -145,11 +170,9 @@ namespace LogOut {
             if (Settings.workMinimized && !Win32.IsTopmost()) return;
 
             // Send disconnect signal
-            long time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             Log("Closing TCP connections...", 0);
-            KillTCP.KillTCPConnectionForProcess();
-            time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - time;
-            Log("Closed connections (took " + time + " ms)", 0);
+            long delay = KillTCP.KillTCPConnectionForProcess();
+            Log("Closed connections (took " + delay + " ms)", 0);
         }
 
         /// <summary>
@@ -164,6 +187,8 @@ namespace LogOut {
             // Close other windows on exit
             healthOverlayWindow.Close();
             settingsWindow.Close();
+
+            // Close app (not sure if the above close methods are even needed)
             System.Windows.Application.Current.Shutdown();
         }
 
@@ -172,9 +197,9 @@ namespace LogOut {
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Button_SetKey_Click(object sender, RoutedEventArgs e) {
+        private void Button_SetHotkey_Click(object sender, RoutedEventArgs e) {
             Log("Press any key...", 0);
-            Button_SetKey.IsEnabled = false;
+            Button_SetHotkey.IsEnabled = false;
             // Raise flag, indicating next key that will be pressed is gonna serve as a hotkey
             Settings.saveKey = true;
         }
@@ -242,7 +267,7 @@ namespace LogOut {
             Log("Saved health globe's current position and values", 0);
 
             // Run task to find changes in health
-            if (healthThread == null) healthThread = Task.Run(() => HealthManager.PollHealth_Task());
+            if (pollHealth_Task == null) pollHealth_Task = Task.Run(() => HealthManager.PollHealth_Task());
         }
     }
 }
