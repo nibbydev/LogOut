@@ -2,7 +2,7 @@
 
 ## What does it do?
 * Closes all Path of Exile connections and logs the user out of the game when a hotkey is pressed
-* Tracks health status and plays a sound when health is low
+* Tracks health status and logs you out when health is low
 
 ## How to get it running?
 1. Compile it yourself or download a compiled file from the [releases](https://github.com/siegrest/LogOut/releases/latest) page
