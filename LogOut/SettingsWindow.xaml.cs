@@ -12,11 +12,19 @@ namespace LogOut {
             // Import initial settings
             TextBox_PollRate.Text = Settings.healthPollRateMS.ToString();
             TextBox_HealthLimit.Text = Settings.healthLimitPercent.ToString();
+            TextBox_HealthWidth.Text = Settings.healthWidth.ToString();
 
+            // Enable/disable controls
             TextBox_HealthLimit.IsEnabled = Settings.trackHealth;
             TextBox_PollRate.IsEnabled = Settings.trackHealth;
+            TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
             CheckBox_AutoAction.IsChecked = Settings.trackHealth;
             CheckBox_Logout.IsEnabled = Settings.trackHealth;
+
+            // Set tooltips
+            TextBox_PollRate.ToolTip = "Range: " + Settings.healthPollRate_Min + " - " + Settings.healthPollRate_Max + " (milliseconds)";
+            TextBox_HealthLimit.ToolTip = "Range: " + Settings.healthLimit_Min + " - " + Settings.healthLimit_Max + " (percent)";
+            TextBox_HealthWidth.ToolTip = "Range: " + Settings.healthWidth_Min + " - " + Settings.healthWidth_Max + " (pixels)";
         }
 
         private void Button_Apply_Click(object sender, RoutedEventArgs e) {
@@ -40,7 +48,18 @@ namespace LogOut {
                     TextBox_HealthLimit.Text = Settings.healthLimitPercent.ToString();
                     Console.WriteLine("[Settings][limit] Error applying value '{0}'");
                 }
-            } 
+            }
+
+            int.TryParse(TextBox_HealthWidth.Text, out int width);
+            if (width != Settings.healthWidth) {
+                if (width > Settings.healthWidth_Min && width <= Settings.healthWidth_Max) {
+                    Console.WriteLine("[Settings][width] Changed value '{0}' to '{1}'", Settings.healthWidth, width);
+                    Settings.healthWidth = width;
+                } else {
+                    TextBox_HealthWidth.Text = Settings.healthWidth.ToString();
+                    Console.WriteLine("[Settings][width] Error applying value '{0}'");
+                }
+            }
 
             Hide();
         }
@@ -55,6 +74,7 @@ namespace LogOut {
             // Enable/disable settings
             TextBox_HealthLimit.IsEnabled = Settings.trackHealth;
             TextBox_PollRate.IsEnabled = Settings.trackHealth;
+            TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
             CheckBox_Logout.IsEnabled = Settings.trackHealth;
         }
 

@@ -19,19 +19,21 @@ namespace LogOut {
         public const int healthPollRate_Max = 1000;
         public const int healthLimit_Min = 0;
         public const int healthLimit_Max = 100;
+        public const int healthWidth_Min = 0;
+        public const int healthWidth_Max = 10;
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "TCP Disconnect v1.0";
+        public const string programWindowTitle = "TCP Disconnect v1.1.2";
         public static uint processId;
 
         // HealthManager
+        public static int healthWidth = 5;
         public static int healthPollRateMS = 10;
         public static double healthLimitPercent = 30;
         public static int area_size;
         public static int area_top;
         public static int area_left;
-        public const int healthWidth = 1;
 
         // Delays
         public const int findGameTaskDelayMS = 1000;
