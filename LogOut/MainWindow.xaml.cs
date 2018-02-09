@@ -1,25 +1,21 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Forms;
 using System.Threading.Tasks;
-
-/*
-changelog:
-    add: comments, tons and tons of comments
-    change(eh): tcp killing method returns delay (ms)
-    fix: bitmap memory leak
-*/
+using System.Windows.Controls;
 
 namespace LogOut {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window {
-        private EventHandler eventHandler;
-        private IntPtr client_hWnd;
+        private EventHandler keyboardEventHandler;
         private HealthOverlayWindow healthOverlayWindow;
         private SettingsWindow settingsWindow;
+
+        public static Win32.WinPos lastWinPos;
+        public static IntPtr client_hWnd;
+        public static TextBox console;
 
         private Task findGame_Task;
         private Task pollHealth_Task;
@@ -31,6 +27,9 @@ namespace LogOut {
         public MainWindow() {
             InitializeComponent();
 
+            // Assign console box to static variable
+            console = TextBox_Console;
+
             // Set window title
             Title = Settings.programWindowTitle;
 
@@ -38,8 +37,8 @@ namespace LogOut {
             Log(Settings.programWindowTitle + " by Siegrest", 0);
 
             // Hook
-            eventHandler = new EventHandler(Event_keyboard);
-            KeyboardHook.KeyBoardAction += eventHandler;
+            keyboardEventHandler = new EventHandler(Event_Keyboard);
+            KeyboardHook.KeyBoardAction += keyboardEventHandler;
             KeyboardHook.Start();
 
             // Warn user on no admin rights
@@ -115,8 +114,6 @@ namespace LogOut {
         /// Reacts to window position/size changes
         /// </summary>
         private void PositionHealthOverlay_Task() {
-            Win32.WinPos lastWinPos = new Win32.WinPos();
-            
             while (true) {
                 Win32.WinPos winPos = new Win32.WinPos();
                 Win32.GetWindowRect(client_hWnd, ref winPos);
@@ -158,11 +155,11 @@ namespace LogOut {
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void Event_keyboard(object sender, EventArgs e) {
+        private void Event_Keyboard(object sender, EventArgs e) {
             if (Settings.saveKey) {
                 Settings.saveKey = false;
                 Button_SetHotkey.IsEnabled = true;
-                Log("Assigned TCP disconnect to key: " + (Keys)Settings.logOutHotKey, 0);
+                Log("Assigned TCP disconnect to key: " + (System.Windows.Forms.Keys)Settings.logOutHotKey, 0);
                 return;
             }
 
@@ -181,7 +178,7 @@ namespace LogOut {
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
-            KeyboardHook.KeyBoardAction -= eventHandler;
+            KeyboardHook.KeyBoardAction -= keyboardEventHandler;
             KeyboardHook.Stop();
 
             // Close other windows on exit
@@ -209,7 +206,7 @@ namespace LogOut {
         /// </summary>
         /// <param name="str"></param>
         /// <param name="status"></param>
-        private void Log(string str, int status) {
+        public static void Log(string str, int status) {
             string prefix;
 
             switch (status) {
@@ -229,8 +226,10 @@ namespace LogOut {
             }
 
             string time = string.Format("{0:HH:mm:ss}", DateTime.Now);
-            TextBox_Console.AppendText("[" + time + "]" + prefix + str + "\n");
-            TextBox_Console.ScrollToEnd();
+            Application.Current.Dispatcher.Invoke(() => {
+                console.AppendText("[" + time + "]" + prefix + str + "\n");
+                console.ScrollToEnd();
+            });
         }
 
         /// <summary>

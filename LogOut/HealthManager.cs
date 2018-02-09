@@ -58,8 +58,8 @@ namespace LogOut {
         /// Periodically calculates health percentage
         /// </summary>
         public static void PollHealth_Task() {
-            double lastHealth = 0;
             bool lastNotBelowLimit = true;
+            double lastHealth = 0;
 
             while (true) {
                 // Run x times a second
@@ -90,6 +90,18 @@ namespace LogOut {
                     continue;
                 }
 
+                // If last saved window position does not equal current window position,
+                // which means the game window was moved or resized, then remove last saved
+                // health status
+                Win32.WinPos winPos = new Win32.WinPos();
+                Win32.GetWindowRect(MainWindow.client_hWnd, ref winPos);
+                if (!MainWindow.lastWinPos.Equals(winPos)) {
+                    MainWindow.Log("Window moved. Saved health cleared", 3);
+                    System.Media.SystemSounds.Beep.Play();
+                    fullHealthBitMap = null;
+                    continue;
+                }
+
                 // Debugging, I guess?
                 if (health > Settings.healthLimitPercent) Console.WriteLine("[HealthManager] Found change: " + health);
 
@@ -98,17 +110,14 @@ namespace LogOut {
                     if (lastNotBelowLimit) {
                         // Raise flag so this is not spammed
                         lastNotBelowLimit = false;
-                        Console.WriteLine("[HealthManager] Health below limit");
-                        
+                        MainWindow.Log("Health below limit", 0);
+
                         // Quit game if event is enabled in settings
                         if (Settings.doLogout) {
-                            KillTCP.KillTCPConnectionForProcess();
-                            Console.WriteLine("Sending disconnect signal");
+                            MainWindow.Log("Sending disconnect signal", 0);
+                            long delay = KillTCP.KillTCPConnectionForProcess();
+                            MainWindow.Log("Disconnected (took " + delay + "ms)", 0);
                         }
-                        
-                        // Play sound?
-                        System.Media.SystemSounds.Beep.Play();
-                        continue;
                     }
                 } else {
                     lastNotBelowLimit = true;
