@@ -25,8 +25,12 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "TCP Disconnect v1.2.7";
+        public const string programWindowTitle = "TCP Disconnect v1.3";
         public static uint processId;
+
+        // Health bar window
+        public const int healthBarWidthPercent = 30;
+        public static volatile bool healthBarEnabled = false;
 
         // HealthManager
         public static int healthWidth = 5;

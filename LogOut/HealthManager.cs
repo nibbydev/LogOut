@@ -95,6 +95,12 @@ namespace LogOut {
                     continue;
                 }
 
+                // Update healthbar overlay
+                if (Settings.healthBarEnabled) {
+                    System.Windows.Application.Current.Dispatcher.Invoke(() => MainWindow.healthBar.SetPercentage(health));
+                    
+                }
+
                 // Do action when health is below limit
                 if (health < Settings.healthLimitPercent) {
                     if (lastNotBelowLimit) {

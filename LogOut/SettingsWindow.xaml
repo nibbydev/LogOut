@@ -18,6 +18,7 @@
         <TextBox x:Name="TextBox_HealthWidth" HorizontalAlignment="Left" Height="23" Margin="10,191,0,0" TextWrapping="Wrap" Text="5" VerticalAlignment="Top" Width="120" IsEnabled="False"/>
         <Label Content="Health capture width" HorizontalAlignment="Left" Margin="10,166,0,0" VerticalAlignment="Top" Padding="2"/>
         <CheckBox x:Name="CheckBox_Debug" Content="Debug mode" HorizontalAlignment="Left" Margin="150,10,0,0" VerticalAlignment="Top" ToolTip="Spams console window with debug messages"/>
+        <CheckBox x:Name="CheckBox_ShowHealthBar" Content="Show healthbar" HorizontalAlignment="Left" Margin="150,30,0,0" VerticalAlignment="Top" ToolTip="Displays a big red healthbar as an overlay"/>
 
     </Grid>
 </Window>

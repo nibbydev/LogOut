@@ -12,6 +12,7 @@ namespace LogOut {
         private EventHandler keyboardEventHandler;
         private HealthOverlayWindow healthOverlayWindow;
         private SettingsWindow settingsWindow;
+        public static HealthBarWindow healthBar;
 
         public static Win32.WinPos lastWinPos;
         public static IntPtr client_hWnd;
@@ -26,6 +27,9 @@ namespace LogOut {
         /// </summary>
         public MainWindow() {
             InitializeComponent();
+
+            // Init healthbar
+            healthBar = new HealthBarWindow();
 
             // Assign console box to static variable
             console = TextBox_Console;
@@ -132,9 +136,20 @@ namespace LogOut {
                 Settings.area_top = winPos.Bottom - Settings.area_size - Settings.area_size * 10 / 100;
                 Settings.area_left = winPos.Left + Settings.area_size / 2 + Settings.area_size * 14 / 100;
                 HealthManager.screenShotSize.Height = HealthManager.screenShotSize.Width = Settings.area_size;
+               
+                // Position UI elements
+                Dispatcher.Invoke(() => {
+                    // Position healthbar overlay
+                    healthBar.Width = (winPos.Right - winPos.Left) * Settings.healthBarWidthPercent / 100;
+                    healthBar.Left = winPos.Left + (winPos.Right - winPos.Left) / 2 - healthBar.Width / 2;
+                    healthBar.Top = winPos.Top + 50;
+                    healthBar.SetPercentage(100);
 
-                // Update HealthOverlay position
-                Dispatcher.Invoke(() => SetHealthOverlayPos());
+                    // Update HealthOverlay position
+                    healthOverlayWindow.Top = Settings.area_top;
+                    healthOverlayWindow.Left = Settings.area_left - Settings.area_size / 2;
+                    healthOverlayWindow.Width = healthOverlayWindow.Height = Settings.area_size;
+                });
 
                 // Just for some debugging
                 Log("[Overlay] Window position change x:" + Settings.area_left + " y:" + Settings.area_top + 
@@ -183,7 +198,7 @@ namespace LogOut {
             settingsWindow.Close();
 
             // Close app (not sure if the above close methods are even needed)
-            System.Windows.Application.Current.Shutdown();
+            Application.Current.Shutdown();
         }
 
         /// <summary>
@@ -240,15 +255,6 @@ namespace LogOut {
                 console.AppendText("[" + time + "]" + prefix + str + "\n");
                 console.ScrollToEnd();
             });
-        }
-
-        /// <summary>
-        /// Updates the location of the health overlay
-        /// </summary>
-        private void SetHealthOverlayPos() {
-            healthOverlayWindow.Top = Settings.area_top;
-            healthOverlayWindow.Left = Settings.area_left - Settings.area_size / 2;
-            healthOverlayWindow.Width = healthOverlayWindow.Height = Settings.area_size;
         }
 
         /// <summary>

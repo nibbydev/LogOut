@@ -20,6 +20,7 @@ namespace LogOut {
             TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
             CheckBox_AutoAction.IsChecked = Settings.trackHealth;
             CheckBox_Logout.IsEnabled = Settings.trackHealth;
+            CheckBox_ShowHealthBar.IsEnabled = Settings.trackHealth;
             CheckBox_Debug.IsChecked = Settings.debugMode;
 
             // Set tooltips
@@ -66,6 +67,13 @@ namespace LogOut {
             Settings.trackHealth = (bool)CheckBox_AutoAction.IsChecked;
             Settings.debugMode = (bool)CheckBox_Debug.IsChecked;
             Settings.doLogout = (bool)CheckBox_Logout.IsChecked;
+            Settings.healthBarEnabled = (bool)CheckBox_ShowHealthBar.IsChecked;
+
+            // Show/hide healthbar
+            if (Settings.trackHealth && Settings.healthBarEnabled)
+                Application.Current.Dispatcher.Invoke(() =>  MainWindow.healthBar.Show());
+            else
+                Application.Current.Dispatcher.Invoke(() => MainWindow.healthBar.Hide());
 
             Hide();
         }
@@ -77,6 +85,7 @@ namespace LogOut {
             TextBox_HealthWidth.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
             TextBox_PollRate.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
             CheckBox_Logout.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
+            CheckBox_ShowHealthBar.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
         }
 
         /// <summary>
@@ -95,12 +104,14 @@ namespace LogOut {
             CheckBox_AutoAction.IsChecked = Settings.trackHealth;
             CheckBox_Logout.IsEnabled = Settings.trackHealth;
             CheckBox_Debug.IsChecked = Settings.debugMode;
+            CheckBox_ShowHealthBar.IsEnabled = Settings.trackHealth;
 
             // Revert settings to original state
             CheckBox_Minimized.IsChecked = Settings.workMinimized;
             CheckBox_AutoAction.IsChecked = Settings.trackHealth;
             CheckBox_Debug.IsChecked = Settings.debugMode;
             CheckBox_Logout.IsChecked = Settings.doLogout;
+            CheckBox_ShowHealthBar.IsChecked = Settings.healthBarEnabled;
 
             // Revert textbox values
             TextBox_PollRate.Text = Settings.healthPollRateMS.ToString();
