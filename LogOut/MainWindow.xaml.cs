@@ -36,11 +36,6 @@ namespace LogOut {
             // Print credentials
             Log(Settings.programWindowTitle + " by Siegrest", 0);
 
-            // Hook
-            keyboardEventHandler = new EventHandler(Event_Keyboard);
-            KeyboardHook.KeyBoardAction += keyboardEventHandler;
-            KeyboardHook.Start();
-
             // Warn user on no admin rights
             if (!Win32.CheckElevation()) Log("Elevated access required for disconnect", 1);
 
@@ -199,6 +194,13 @@ namespace LogOut {
             Button_SetHotkey.IsEnabled = false;
             // Raise flag, indicating next key that will be pressed is gonna serve as a hotkey
             Settings.saveKey = true;
+
+            // Hook keyboard. This only runs once
+            if (Settings.logOutHotKey == 0) {
+                keyboardEventHandler = new EventHandler(Event_Keyboard);
+                KeyboardHook.KeyBoardAction += keyboardEventHandler;
+                KeyboardHook.Start();
+            }
         }
 
         /// <summary>
