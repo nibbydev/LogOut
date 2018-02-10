@@ -20,6 +20,7 @@ namespace LogOut {
             TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
             CheckBox_AutoAction.IsChecked = Settings.trackHealth;
             CheckBox_Logout.IsEnabled = Settings.trackHealth;
+            CheckBox_Debug.IsChecked = Settings.debugMode;
 
             // Set tooltips
             TextBox_PollRate.ToolTip = "Range: " + Settings.healthPollRate_Min + " - " + Settings.healthPollRate_Max + " (milliseconds)";
@@ -31,65 +32,80 @@ namespace LogOut {
             int.TryParse(TextBox_PollRate.Text, out int rate);
             if (rate != Settings.healthPollRateMS) {
                 if (rate > Settings.healthPollRate_Min && rate <= Settings.healthPollRate_Max) {
-                    Console.WriteLine("[Settings][rate] Changed value '{0}' to '{1}' for pollRate", Settings.healthPollRateMS, rate);
+                    MainWindow.Log("[Settings][Rate] " + Settings.healthPollRateMS + " -> " + rate, -1);
                     Settings.healthPollRateMS = rate;
                 } else {
                     TextBox_PollRate.Text = Settings.healthPollRateMS.ToString();
-                    Console.WriteLine("[Settings][rate] Error applying value '{0}'");
+                    MainWindow.Log("[Settings][Rate] Error applying value " + rate, -1);
                 }
             }
 
             int.TryParse(TextBox_HealthLimit.Text, out int limit);
             if (limit != Settings.healthLimitPercent) {
                 if (limit > Settings.healthLimit_Min && limit <= Settings.healthLimit_Max) {
-                    Console.WriteLine("[Settings][limit] Changed value '{0}' to '{1}'", Settings.healthLimitPercent, limit);
+                    MainWindow.Log("[Settings][Limit] " + Settings.healthLimitPercent + " -> " + limit, -1);
                     Settings.healthLimitPercent = limit;
                 } else {
                     TextBox_HealthLimit.Text = Settings.healthLimitPercent.ToString();
-                    Console.WriteLine("[Settings][limit] Error applying value '{0}'");
+                    MainWindow.Log("[Settings][Limit] Error applying value " + limit, -1);
                 }
             }
 
             int.TryParse(TextBox_HealthWidth.Text, out int width);
             if (width != Settings.healthWidth) {
                 if (width > Settings.healthWidth_Min && width <= Settings.healthWidth_Max) {
-                    Console.WriteLine("[Settings][width] Changed value '{0}' to '{1}'", Settings.healthWidth, width);
+                    MainWindow.Log("[Settings][Width] " + Settings.healthWidth + " -> " + width, -1);
                     Settings.healthWidth = width;
                 } else {
                     TextBox_HealthWidth.Text = Settings.healthWidth.ToString();
-                    Console.WriteLine("[Settings][width] Error applying value '{0}'");
+                    MainWindow.Log("[Settings][Width] Error applying value " + width, -1);
                 }
             }
+
+            Settings.workMinimized = (bool)CheckBox_Minimized.IsChecked;
+            Settings.trackHealth = (bool)CheckBox_AutoAction.IsChecked;
+            Settings.debugMode = (bool)CheckBox_Debug.IsChecked;
+            Settings.doLogout = (bool)CheckBox_Logout.IsChecked;
 
             Hide();
         }
 
-        private void CheckBox_Minimized_Checked(object sender, RoutedEventArgs e) {
-            Settings.workMinimized = (bool)CheckBox_Minimized.IsChecked;
-        }
-
+        // Keep
         private void CheckBox_AutoAction_Click(object sender, RoutedEventArgs e) {
-            Settings.trackHealth = (bool)CheckBox_AutoAction.IsChecked;
-
-            // Enable/disable settings
-            TextBox_HealthLimit.IsEnabled = Settings.trackHealth;
-            TextBox_PollRate.IsEnabled = Settings.trackHealth;
-            TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
-            CheckBox_Logout.IsEnabled = Settings.trackHealth;
+            // Enable/disable controls
+            TextBox_HealthLimit.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
+            TextBox_HealthWidth.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
+            TextBox_PollRate.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
+            CheckBox_Logout.IsEnabled = (bool)CheckBox_AutoAction.IsChecked;
         }
 
         /// <summary>
-        /// Instead of closing the window, hide it
+        /// Instead of closing the window, hide it. Don't save settings
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
             e.Cancel = true;
             Hide();
-        }
 
-        private void CheckBox_Logout_Click(object sender, RoutedEventArgs e) {
-            Settings.doLogout = (bool)CheckBox_Logout.IsChecked;
+            // Enable/disable controls
+            TextBox_HealthLimit.IsEnabled = Settings.trackHealth;
+            TextBox_PollRate.IsEnabled = Settings.trackHealth;
+            TextBox_HealthWidth.IsEnabled = Settings.trackHealth;
+            CheckBox_AutoAction.IsChecked = Settings.trackHealth;
+            CheckBox_Logout.IsEnabled = Settings.trackHealth;
+            CheckBox_Debug.IsChecked = Settings.debugMode;
+
+            // Revert settings to original state
+            CheckBox_Minimized.IsChecked = Settings.workMinimized;
+            CheckBox_AutoAction.IsChecked = Settings.trackHealth;
+            CheckBox_Debug.IsChecked = Settings.debugMode;
+            CheckBox_Logout.IsChecked = Settings.doLogout;
+
+            // Revert textbox values
+            TextBox_PollRate.Text = Settings.healthPollRateMS.ToString();
+            TextBox_HealthLimit.Text = Settings.healthLimitPercent.ToString();
+            TextBox_HealthWidth.Text = Settings.healthWidth.ToString();
         }
     }
 }

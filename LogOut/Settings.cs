@@ -9,6 +9,7 @@ namespace LogOut {
         public static volatile bool workMinimized = false;
         public static volatile bool trackHealth = false;
         public static volatile bool doLogout = false;
+        public static volatile bool debugMode = false;
 
         // KeyboardHook
         public static volatile bool saveKey = false;
@@ -24,7 +25,7 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "TCP Disconnect v1.1.3";
+        public const string programWindowTitle = "TCP Disconnect v1.2.7";
         public static uint processId;
 
         // HealthManager

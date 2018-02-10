@@ -72,7 +72,7 @@ namespace LogOut {
                     // If first run print text
                     if (runOnce) {
                         runOnce = false;
-                        Dispatcher.Invoke(() => Log("Waiting for PoE process...", 0));
+                        Log("Waiting for PoE process...", 0);
                     }
 
                     System.Threading.Thread.Sleep(Settings.findGameTaskDelayMS);
@@ -87,16 +87,16 @@ namespace LogOut {
                 break;
             }
 
-            // Invoke dispatcher, allowing UI element updates
+            // Enable hotkey button
             Dispatcher.Invoke(() => {
-                // Enable hotkey button
                 Button_SetHotkey.IsEnabled = true;
-
-                // If runOnce was lowered that means when the app was launched PoE was not running
-                // and the message "Waiting for PoE process..." was displayed. So, naturally we need
-                // to inform the user that the processs has been found now
-                if (!runOnce) Log("PoE process found", 0);
+                Button_SaveHealth.IsEnabled = true;
             });
+
+            // If runOnce was lowered that means when the app was launched PoE was not running
+            // and the message "Waiting for PoE process..." was displayed. So, naturally we need
+            // to inform the user that the processs has been found now
+            if (!runOnce) Log("PoE process found", 0);
 
             // Now that the game handle has been found, start a task that calculates the health globe's
             // position
@@ -123,7 +123,7 @@ namespace LogOut {
                 // Null the saved health state as the window moved and it's no longer valid
                 if (HealthManager.fullHealthBitMap != null) {
                     HealthManager.fullHealthBitMap = null;
-                    Dispatcher.Invoke(() => Log("Window moved. Saved health no longer valid", 2));
+                    Log("Window moved. Saved health no longer valid", 2);
                     System.Media.SystemSounds.Beep.Play();
                 }
 
@@ -137,8 +137,8 @@ namespace LogOut {
                 Dispatcher.Invoke(() => SetHealthOverlayPos());
 
                 // Just for some debugging
-                Console.WriteLine("[HealthOverlay] Window position change: " +
-                    Settings.area_left + "x " + Settings.area_top + "y " + Settings.area_size + "size");
+                Log("[Overlay] Window position change x:" + Settings.area_left + " y:" + Settings.area_top + 
+                    " size:" + Settings.area_size, -1);
 
                 // Pause briefly until checking for changes again
                 System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
@@ -151,6 +151,8 @@ namespace LogOut {
         /// <param name="sender"></param>
         /// <param name="e"></param>
         private void Event_Keyboard(object sender, EventArgs e) {
+            Log("[KEY] Captured hotkey", -1);
+
             if (Settings.saveKey) {
                 Settings.saveKey = false;
                 Button_SetHotkey.IsEnabled = true;
@@ -213,6 +215,12 @@ namespace LogOut {
 
             switch (status) {
                 default:
+                case -1:
+                    // -1 stands for debug due to poor planning. Don't display debug messages
+                    // if the setting has not been enabled
+                    if (!Settings.debugMode) return;
+                    prefix = "[DEBUG]";
+                    break;
                 case 0:
                     prefix = "[INFO] ";
                     break;

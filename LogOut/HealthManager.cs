@@ -69,20 +69,20 @@ namespace LogOut {
                 if (health == lastHealth) continue;
                 else lastHealth = health;
 
-                // Error code handling
-                if (health == -1) {
-                    Console.WriteLine("[HealthManager] Not initialized (" + health + ")");
-                    continue;
-                } else if (health < 1) {
-                    Console.WriteLine("Major change: 100%. Loading screen?");
+                if (health < 1) {
+                    MainWindow.Log("[Health] Major change: 100%. Loading screen?", -1);
                     continue;
                 }
 
                 // If topmost window is not PoE
                 if (!Win32.IsTopmost()) {
-                    Console.WriteLine("[HealthManager][NOT TOPMOST] Found change (" + health + ")");
+                    MainWindow.Log("[Health][NOT TOPMOST] Found change (" + health + ")", -1);
                     continue;
                 }
+
+                // Debugging, I guess?
+                if (health > Settings.healthLimitPercent)
+                    MainWindow.Log("[Health] Found change: " + health, -1);
 
                 // If last saved window position does not equal current window position,
                 // which means the game window was moved or resized, then remove last saved
@@ -90,27 +90,24 @@ namespace LogOut {
                 Win32.WinPos winPos = new Win32.WinPos();
                 Win32.GetWindowRect(MainWindow.client_hWnd, ref winPos);
                 if (!MainWindow.lastWinPos.Equals(winPos)) {
-                    MainWindow.Log("Window moved. Saved health cleared", 3);
+                    MainWindow.Log("[Health] Window moved. Saved health cleared", 3);
                     System.Media.SystemSounds.Beep.Play();
                     fullHealthBitMap = null;
                     continue;
                 }
-
-                // Debugging, I guess?
-                if (health > Settings.healthLimitPercent) Console.WriteLine("[HealthManager] Found change: " + health);
 
                 // Do action when health is below limit
                 if (health < Settings.healthLimitPercent) {
                     if (lastNotBelowLimit) {
                         // Raise flag so this is not spammed
                         lastNotBelowLimit = false;
-                        MainWindow.Log("Health below limit", 0);
+                        MainWindow.Log("[Health] Health below limit", 0);
 
                         // Quit game if event is enabled in settings
                         if (Settings.doLogout) {
-                            MainWindow.Log("Sending disconnect signal", 0);
+                            MainWindow.Log("[Health] Sending disconnect signal", 0);
                             long delay = KillTCP.KillTCPConnectionForProcess();
-                            MainWindow.Log("Disconnected (took " + delay + "ms)", 0);
+                            MainWindow.Log("[Health] Disconnected (took " + delay + "ms)", 0);
                         }
                     }
                 } else {
