@@ -25,6 +25,9 @@ namespace LogOut {
             // Can save the screenshot that was taken but there's no need
             //currentHealthBitMap.Save("Screenshot.png", System.Drawing.Imaging.ImageFormat.Png);
 
+            // If the PoE window has not been found yet or if the full health state was cleared, don't compare
+            if (fullHealthBitMap == null || Settings.area_size < 1) return -1;
+
             int change = 0;
             // Compare all the pixels of the current map versus the full health one
             // And by all I mean just the red ones. 
@@ -37,7 +40,7 @@ namespace LogOut {
             }
                 
             // Return the percentage of health remaining
-            return 100 - (double)change / Settings.healthWidth / Settings.area_size * 100;
+            return 100 - Math.Round((double)change / Settings.healthWidth / Settings.area_size * 100);
         }
 
         /// <summary>
@@ -57,10 +60,6 @@ namespace LogOut {
 
                 // Don't do any calculations until this has been enabled
                 if (!Settings.trackHealth) continue;
-                // If the full health state was cleared, don't compare
-                if (fullHealthBitMap == null) continue; 
-                // If the PoE window has not been found yet
-                if (Settings.area_size < 1) continue;
 
                 // Get current health state
                 health = GetHealthAsPercentage();
@@ -120,6 +119,9 @@ namespace LogOut {
         /// Saves the current health state as full
         /// </summary>
         public static void SaveFullHealthState() {
+            currentHealthBitMap = new Bitmap(Settings.healthWidth, Settings.area_size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            currentScreenGraph = Graphics.FromImage(currentHealthBitMap);
+
             // Create a new instance of Bitmap and Graphics (the size might have changed)
             Bitmap temp_currentHealthBitMap = new Bitmap(Settings.healthWidth, Settings.area_size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             Graphics temp_screenGraph = Graphics.FromImage(temp_currentHealthBitMap);
