@@ -14,16 +14,11 @@ using System.Windows.Shapes;
 
 namespace LogOut {
     /// <summary>
-    /// Interaction logic for HealthBox.xaml
+    /// Interaction logic for TestWindow.xaml
     /// </summary>
     public partial class HealthOverlayWindow : Window {
         public HealthOverlayWindow() {
             InitializeComponent();
-        }
-
-        private void Button_Save_Click(object sender, RoutedEventArgs e) {
-            Hide();
-            HealthManager.SaveFullHealthState();
         }
     }
 }

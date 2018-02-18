@@ -5,16 +5,17 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LogOut"
         mc:Ignorable="d"
-        Title="HealthBarWindow" Height="30" Width="150" ResizeMode="NoResize" ShowInTaskbar="False" IsHitTestVisible="False" WindowStyle="None" BorderThickness="2" Background="#FF5B5B5B" Focusable="False" Topmost="True">
+        Title="HealthBarWindow" Height="30" Width="150" ResizeMode="NoResize" WindowStyle="None" BorderThickness="2" Background="#FF5B5B5B" Focusable="False" Topmost="True">
     <Grid >
-        <Rectangle x:Name="Rectangle" HorizontalAlignment="Left" Width="150">
+        <Rectangle x:Name="Rectangle" HorizontalAlignment="Left" Width="150" Fill="Red"/>
+        <Rectangle x:Name="Rectangle_Shadow">
             <Rectangle.Fill>
                 <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                    <GradientStop Color="Red" Offset="0"/>
-                    <GradientStop Color="#FFAC0000" Offset="1"/>
+                    <GradientStop Color="#00000000" Offset="0"/>
+                    <GradientStop Color="#99000000" Offset="1"/>
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
-        <Label x:Name="Label" Content="100%" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Consolas" FontSize="16" Padding="0" BorderThickness="0" Background="{x:Null}"/>
+        <Label x:Name="Label" Content="100%" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Consolas" FontSize="16"/>
     </Grid>
 </Window>

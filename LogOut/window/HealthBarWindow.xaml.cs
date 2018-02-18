@@ -28,15 +28,8 @@ namespace LogOut {
         /// <summary>
         /// Not in use atm. Will be used to notify whether or not program is working
         /// </summary>
-        public void SetColor() {
-            LinearGradientBrush gradient = new LinearGradientBrush {
-                StartPoint = new Point(0.5, 0),
-                EndPoint = new Point(0.5, 1)
-            };
-            gradient.GradientStops.Add(new GradientStop(Colors.Blue, 0));
-            gradient.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString("#FFAC0000"), 1));
-
-            Rectangle.Fill = gradient;
+        public void SetColor(Color color) {
+            Rectangle.Fill = new SolidColorBrush(color);
         }
     }
 }

@@ -10,17 +10,18 @@ namespace LogOut {
     /// </summary>
     public partial class MainWindow : Window {
         private EventHandler keyboardEventHandler;
-        private HealthOverlayWindow healthOverlayWindow;
         private SettingsWindow settingsWindow;
-        public static HealthBarWindow healthBar;
-
+        public static HealthBarTracker tracker;
         public static Win32.WinPos lastWinPos;
         public static IntPtr client_hWnd;
         public static TextBox console;
 
-        private Task findGame_Task;
+        private Task findGameHandle_Task;
         private Task pollHealth_Task;
-        private Task positionHealthOverlay_Task;
+        private Task positionOverlay_Task;
+
+        public static HealthBarWindow healthBar;
+        public static HealthOverlayWindow healthOverlay;
 
         /// <summary>
         /// Initializes elements
@@ -28,8 +29,11 @@ namespace LogOut {
         public MainWindow() {
             InitializeComponent();
 
-            // Init healthbar
+            // Init instances
             healthBar = new HealthBarWindow();
+            tracker = new HealthBarTracker();
+            settingsWindow = new SettingsWindow();
+            healthOverlay = new HealthOverlayWindow();
 
             // Assign console box to static variable
             console = TextBox_Console;
@@ -41,17 +45,13 @@ namespace LogOut {
             Log(Settings.programWindowTitle + " by Siegrest", 0);
 
             // Warn user on no admin rights
-            if (!Win32.CheckElevation()) Log("Elevated access required for disconnect", 1);
+            Settings.elevatedAccess = Win32.CheckElevation();
+            if (!Settings.elevatedAccess) Log("Elevated access required for disconnect", 1);
 
-            // Run task to find application handle. Runs until game handle is found
-            findGame_Task = Task.Run(() => FindGame_Task());
-
-            // Run task to find application coordinates. Runs until program exits
-            positionHealthOverlay_Task = new Task(() => PositionHealthOverlay_Task());
-
-            // Define new instances of settings window and health overlay window
-            healthOverlayWindow = new HealthOverlayWindow();
-            settingsWindow = new SettingsWindow();
+            // Run tasks
+            findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
+            positionOverlay_Task = Task.Run(() => PositionHealthOverlay_Task());
+            pollHealth_Task = Task.Run(() => tracker.PollHealth_Task());
         }
 
         /// <summary>
@@ -59,7 +59,7 @@ namespace LogOut {
         /// Runs until those are found
         /// Starts the positionHealthOverlay_Task task
         /// </summary>
-        private void FindGame_Task() {
+        private void FindGameHandle_Task() {
             // Flag that allows us to print messages like "Waiting for PoE process..."
             // only if the game is not running
             bool runOnce = true; 
@@ -92,19 +92,12 @@ namespace LogOut {
             }
 
             // Enable hotkey button
-            Dispatcher.Invoke(() => {
-                Button_SetHotkey.IsEnabled = true;
-                Button_SaveHealth.IsEnabled = true;
-            });
+            if (Settings.elevatedAccess) Dispatcher.Invoke(() => Button_SetHotkey.IsEnabled = true);
 
             // If runOnce was lowered that means when the app was launched PoE was not running
             // and the message "Waiting for PoE process..." was displayed. So, naturally we need
             // to inform the user that the processs has been found now
             if (!runOnce) Log("PoE process found", 0);
-
-            // Now that the game handle has been found, start a task that calculates the health globe's
-            // position
-            positionHealthOverlay_Task.Start();
         }
 
         /// <summary>
@@ -113,47 +106,40 @@ namespace LogOut {
         /// Reacts to window position/size changes
         /// </summary>
         private void PositionHealthOverlay_Task() {
+            // Wait until game handle is found
+            while (Settings.processId <= 0) System.Threading.Thread.Sleep(10);
+
             while (true) {
                 Win32.WinPos winPos = new Win32.WinPos();
                 Win32.GetWindowRect(client_hWnd, ref winPos);
 
-                // Recalculate 2 times a second
+                // Recalculate x times a second
                 // Don't recalculate if there has been no change in window size/position
                 if (lastWinPos.Equals(winPos)) {
                     System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
                     continue;
                 } else lastWinPos = winPos; // Save latest window position
 
-                // Null the saved health state as the window moved and it's no longer valid
-                if (HealthManager.fullHealthBitMap != null) {
-                    HealthManager.fullHealthBitMap = null;
-                    Log("Window moved. Saved health no longer valid", 2);
-                    System.Media.SystemSounds.Beep.Play();
-                }
+                int width = winPos.Right - winPos.Left;
+                int height = winPos.Bottom - winPos.Top;
+                double half_width = width / 2.0;
 
-                // Calculate HealthOverlay position (quick mafs)
-                Settings.area_size = (winPos.Bottom - winPos.Top) * 18 / 100;
-                Settings.area_top = winPos.Bottom - Settings.area_size - Settings.area_size * 10 / 100;
-                Settings.area_left = winPos.Left + Settings.area_size / 2 + Settings.area_size * 14 / 100;
-                HealthManager.screenShotSize.Height = HealthManager.screenShotSize.Width = Settings.area_size;
-               
+                // Calculate position for the healthbar that's above the char's head
+                Settings.width = (int)(height * 9.6 / 100.0);
+                Settings.height = (int)(height * 1.7 / 100.0);
+                Settings.left = (int)(winPos.Left + half_width - Settings.width / 2.0);
+                Settings.top = (int)(winPos.Top + height * 30.9 / 100.0 + Settings.height);
+
                 // Position UI elements
                 Dispatcher.Invoke(() => {
-                    // Position healthbar overlay
-                    healthBar.Width = (winPos.Right - winPos.Left) * Settings.healthBarWidthPercent / 100;
-                    healthBar.Left = winPos.Left + (winPos.Right - winPos.Left) / 2 - healthBar.Width / 2;
+                    // Position big healthbar
+                    healthBar.Width = width * Settings.healthBarWidthPercent / 100.0;
+                    healthBar.Left = winPos.Left + half_width - healthBar.Width / 2.0;
                     healthBar.Top = winPos.Top + 50;
-                    healthBar.SetPercentage(100);
 
-                    // Update HealthOverlay position
-                    healthOverlayWindow.Top = Settings.area_top;
-                    healthOverlayWindow.Left = Settings.area_left - Settings.area_size / 2;
-                    healthOverlayWindow.Width = healthOverlayWindow.Height = Settings.area_size;
+                    // Position healthbar overlay
+                    tracker.SetLocation();
                 });
-
-                // Just for some debugging
-                Log("[Overlay] Window position change x:" + Settings.area_left + " y:" + Settings.area_top + 
-                    " size:" + Settings.area_size, -1);
 
                 // Pause briefly until checking for changes again
                 System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
@@ -193,11 +179,7 @@ namespace LogOut {
             KeyboardHook.KeyBoardAction -= keyboardEventHandler;
             KeyboardHook.Stop();
 
-            // Close other windows on exit
-            healthOverlayWindow.Close();
-            settingsWindow.Close();
-
-            // Close app (not sure if the above close methods are even needed)
+            // Close app
             Application.Current.Shutdown();
         }
 
@@ -264,25 +246,6 @@ namespace LogOut {
         /// <param name="e"></param>
         private void Button_Settings_Click(object sender, RoutedEventArgs e) {
             settingsWindow.ShowDialog();
-        }
-
-        /// <summary>
-        /// Displays a button above the health globe
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Button_SaveHealth_Click(object sender, RoutedEventArgs e) {
-            if (!Settings.trackHealth) {
-                Log("Health tracking disabled in settings", 2);
-                return;
-            }
-
-            Log("Waiting for button press..", 0);
-            healthOverlayWindow.ShowDialog();
-            Log("Saved health globe's current position and values", 0);
-
-            // Run task to find changes in health
-            if (pollHealth_Task == null) pollHealth_Task = Task.Run(() => HealthManager.PollHealth_Task());
         }
     }
 }

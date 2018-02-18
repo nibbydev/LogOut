@@ -17,7 +17,7 @@ namespace LogOut {
 
         // Settings ranges
         public const int healthPollRate_Min = 0;
-        public const int healthPollRate_Max = 1000;
+        public const int healthPollRate_Max = 2000;
         public const int healthLimit_Min = 0;
         public const int healthLimit_Max = 100;
         public const int healthWidth_Min = 0;
@@ -25,23 +25,46 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "TCP Disconnect v1.3";
+        public const string programWindowTitle = "PoeLogout v2.0";
         public static uint processId;
+        public static bool elevatedAccess = false;
 
         // Health bar window
-        public const int healthBarWidthPercent = 30;
+        public const double healthBarWidthPercent = 30.0;
         public static volatile bool healthBarEnabled = false;
 
         // HealthManager
-        public static int healthWidth = 5;
         public static int healthPollRateMS = 10;
         public static double healthLimitPercent = 30;
-        public static int area_size;
-        public static int area_top;
-        public static int area_left;
 
         // Delays
         public const int findGameTaskDelayMS = 1000;
         public const int positionOverlayTaskDelayMS = 500;
+
+        public static readonly int[,,] topBar = {
+            { {  58,  76 }, { 146, 174 }, {  67,  88 } },
+            { {  85, 129 }, { 158, 184 }, {  99, 164 } }, 
+            { {  60,  83 }, { 51,   75 }, {  49,  70 } },
+            { {  90, 100 }, { 99,  109 }, {  93, 103 } }, 
+            { { 115, 141 }, { 138, 173 }, { 131, 163 } }, 
+            { {  23,  38 }, { 135, 165 }, {  40,  54 } }, 
+            { {  23,  38 }, { 82,  125 }, {  25,  45 } },
+            { {  25,  55 }, { 8,    31 }, {  5,   21 } }
+        };
+
+        public static readonly int[,,] bottomBar = {
+            { { 30, 60 }, { 20,   40 }, { 10, 55 } },
+            { { 70, 70 }, { 65,   65 }, { 25, 25 } }
+        };
+
+        // Healthbar tracking shenanigans
+        public static double total_life;
+        public static double total_es;
+        public static volatile bool showCaptureOverlay;
+
+        public static int width, height, left, top;
+        public const int captureAreaMultiplier = 1;
+        public const int colorOffset = 10;
+        public const int barCaptureOffset = 5;
     }
 }
