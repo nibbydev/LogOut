@@ -120,7 +120,13 @@ namespace LogOut {
                 int height = winPos.Bottom - winPos.Top;
                 double half_width = width / 2.0;
 
-                //// Calculate position for the healthbar that's above the char's head
+                // Don't run when game is minimized
+                if (winPos.Right < -width || winPos.Top < -height) {
+                    System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
+                    continue;
+                }
+
+                // Calculate position for the healthbar that's above the char's head
                 Settings.width = (int)(height * 9.6 / 100.0);
                 Settings.height = (int)(height * 1.7 / 100.0);
                 Settings.left = (int)(winPos.Left + half_width - Settings.width / 2.0);
