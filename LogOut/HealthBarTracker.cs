@@ -283,12 +283,15 @@ namespace LogOut {
                 }
             }
 
-            // If more than 1/3 of the pixels were unreadable, return -1
+            // If more than a third of the pixels were unreadable, return error
             if (err > Settings.width / 3) return -1;
 
             // Get percentages of both pools
             double prL = proL / tot * 100;
             double prE = proE / tot * 100;
+
+            // If user didn't specify life/ES ratios, default to showing life %
+            if (Settings.total_life + Settings.total_es < 1) return prL;
 
             // Get weights of both pools
             double eHP = Settings.total_life + Settings.total_es;

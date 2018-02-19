@@ -25,7 +25,7 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "PoeLogout v2.1";
+        public const string programWindowTitle = "PoeLogout v2.1.1";
         public static uint processId;
         public static bool elevatedAccess = false;
 
