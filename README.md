@@ -1,4 +1,4 @@
-# Path of Exile automatic log out app
+# LogOut app for Path of Exile
 
 ## What does it do?
 * Closes all Path of Exile connections and logs the user out of the game when a hotkey is pressed
