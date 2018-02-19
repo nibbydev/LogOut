@@ -11,6 +11,7 @@ namespace LogOut {
 
         private static int areaMulti;
         private static int offset;
+        private static int lastOffset;
 
         /// <summary>
         /// Changes image capture position and size
@@ -20,7 +21,7 @@ namespace LogOut {
 
             size = new Size(Settings.width, Settings.height * areaMulti);
             currentHealthState = new int[Settings.width];
-            yCoord = Settings.height / 4 ;
+            yCoord = (int)(Settings.height / 4.0 * 3 + 1);
 
             img = new Bitmap(Settings.width, Settings.height * areaMulti, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             gfx = Graphics.FromImage(img);
@@ -56,8 +57,11 @@ namespace LogOut {
                     if (health == lastHealth) continue;
                     else lastHealth = health;
 
-                    if (Math.Round(health) < 1) {
-                        MainWindow.Log(" HealthBar not visible", -1);
+                    if (health == -1) {
+                        MainWindow.Log("[WARN] Too many unreadable pixels", -1);
+                        continue;
+                    } else if (health < 1) {
+                        MainWindow.Log(" Health bar not visible", -1);
                         continue;
                     }
 
@@ -101,36 +105,69 @@ namespace LogOut {
         /// </summary>
         public void ParseHealth() {
             offset = FindBarOffset();
-            if (offset < 1) return;
 
-            // Update healthbar overlay tracker
-            if (Settings.showCaptureOverlay) System.Windows.Application.Current.Dispatcher.Invoke(() => {
-                MainWindow.healthOverlay.Width = Settings.width;
-                MainWindow.healthOverlay.Height = Settings.height;
-                MainWindow.healthOverlay.Left = Settings.left;
-                MainWindow.healthOverlay.Top = Settings.top + offset - Settings.height * 2;
-            });
+            if (offset < 1) {
+                MainWindow.Log(" Invalid offset: " + offset, -1);
+                return;
+            }
+
+            // Update healthbar overlay tracker when offset changes
+            if (Settings.showCaptureOverlay && offset != lastOffset) {
+                lastOffset = offset;
+                
+                System.Windows.Application.Current.Dispatcher.Invoke(() => {
+                    MainWindow.healthOverlay.Width = Settings.width;
+                    MainWindow.healthOverlay.Height = Settings.height;
+                    MainWindow.healthOverlay.Left = Settings.left;
+                    MainWindow.healthOverlay.Top = Settings.top + offset - Settings.height * 2 + 1;
+                });
+            }
 
             // For refrence
             //for (int i = 0; i < 10; i++) img.SetPixel(5 + i, offset, Color.FromArgb(255, 0, 0));
             //img.Save("Screenshot.png", System.Drawing.Imaging.ImageFormat.Png);
 
             // Fill pixel array
-            for (int x = 0; x < Settings.width; x++) {
-                Color color = img.GetPixel(x, offset - Settings.height + yCoord);
-                currentHealthState[x] = FindColorMatch(color);
+            //int matchCount = 0;
+            //string line = "";
+            for (int x = 2; x < Settings.width - 2; x++) {
+                Color color = img.GetPixel(x, offset - yCoord);
+                int match = FindColorMatch(color);
+                currentHealthState[x] = match;
 
                 //if (match == -1) {
-                //    Console.WriteLine("    Bad color (offset {0}): r:{1} g:{2} b:{3}", offset, color.R, color.G, color.B);
-                //    img.SetPixel(x, offset - Settings.height + yCoord + 1, Color.FromArgb(0, 255, 0));
-                //    img.SetPixel(x, offset - Settings.height + yCoord - 1, Color.FromArgb(0, 255, 0));
-                //    img.Save("Screenshot_3.png", System.Drawing.Imaging.ImageFormat.Png);
+                //    matchCount++;
+                //    //Console.WriteLine("    Bad color (offset {0}): r:{1} g:{2} b:{3}", offset, color.R, color.G, color.B);
+                //    img.SetPixel(x, offset - yCoord + 1, Color.FromArgb(0, 255, 0));
+                //    img.SetPixel(x, offset - yCoord - 1, Color.FromArgb(0, 255, 0));
                 //}
 
-                //if (match == -1) Console.Write(" ");
-                //else Console.Write(match);
+                //if (matchCount > 5) img.Save("Screenshot_8.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                //switch (match) {
+                //    case -1:
+                //        line += "*";
+                //        break;
+                //    case 0:
+                //    case 1:
+                //        line += "#";
+                //        break;
+                //    case 2:
+                //    case 3:
+                //    case 4:
+                //    case 5:
+                //        line += "=";
+                //        break;
+                //    case 6:
+                //    case 7:
+                //        line += "I";
+                //        break;
+                //    case 8:
+                //        line += " ";
+                //        break;
+                //}
             }
-            //Console.WriteLine();
+            //Console.WriteLine("|{0}|", line);
         }
 
         /// <summary>
@@ -138,18 +175,17 @@ namespace LogOut {
         /// </summary>
         /// <returns>How many px away is bottom border</returns>
         private int FindBarOffset() {
-            for (int y = Settings.height * areaMulti - 1; y > 0; y--) {
-                Color yColor = img.GetPixel(Settings.barCaptureOffset, y);
-
-                //img.SetPixel(localOffset, y, Color.FromArgb(0, 0, 255));
-
+            for (int y = Settings.height * areaMulti - 1; y - yCoord > 0; y--) {
+                Color yColor = img.GetPixel(Settings.barHorizontalOffset, y);
                 int yMatch = FindBorderColorMatch(yColor);
                 if (yMatch == -1) continue;
 
-                //Console.Write("offset " + y + ": ");
+                Color zColor = img.GetPixel(Settings.barHorizontalOffset, y - yCoord);
+                int zMatch = FindColorMatch(zColor);
+                if (zMatch == -1) continue;
 
                 int count = 0;
-                for (int x = Settings.barCaptureOffset + 1; x < Settings.width - Settings.barCaptureOffset * 2; x++) {
+                for (int x = Settings.barHorizontalOffset + 1; x < Settings.width - Settings.barHorizontalOffset * 2; x++) {
                     Color xColor = img.GetPixel(x, y);
                     //img.SetPixel(x, y, Color.FromArgb(255, 0, 0));
 
@@ -165,12 +201,12 @@ namespace LogOut {
                 }
 
                 //Console.WriteLine();
-                if (count > Settings.width - Settings.barCaptureOffset * 4) return y;
+                if (count > Settings.width - Settings.barHorizontalOffset * 4) return y;
             }
 
             //Console.WriteLine("Invalid offset");
             //img.Save("Screenshot_2.png", System.Drawing.Imaging.ImageFormat.Png);
-            return 0;
+            return -1;
         }
 
         /// <summary>
@@ -214,8 +250,8 @@ namespace LogOut {
         /// </summary>
         /// <returns>Remaining health as 0-100</returns>
         public double GetEHPAsPercentage() {
-            double proL = 0, conL = 0;
-            double proE = 0, conE = 0;
+            double proL = 0, proE = 0;
+            int tot = 0, err = 0;
 
             // Get Life and ES
             for (int i = 0; i < Settings.width; i++) {
@@ -224,28 +260,35 @@ namespace LogOut {
                     case 1:
                         proL++;
                         proE++;
+                        tot++;
                         break;
                     case 2:
                     case 3:
                     case 4:
-                        proE++;
-                        conL++;
-                        break;
                     case 5:
-                    case 6:
-                        proL++;
-                        conE++;
+                        proE++;
+                        tot++;
                         break;
+                    case 6:
                     case 7:
-                        conL++;
-                        conE++;
+                        proL++;
+                        tot++;
+                        break;
+                    case 8:
+                        tot++;
+                        break;
+                    case -1:
+                        err++;
                         break;
                 }
             }
 
+            // If more than 1/3 of the pixels were unreadable, return -1
+            if (err > Settings.width / 3) return -1;
+
             // Get percentages of both pools
-            double prL = proL / (proL + conL) * 100.0;
-            double prE = proE / (proE + conE) * 100.0;
+            double prL = proL / tot * 100;
+            double prE = proE / tot * 100;
 
             // Get weights of both pools
             double eHP = Settings.total_life + Settings.total_es;

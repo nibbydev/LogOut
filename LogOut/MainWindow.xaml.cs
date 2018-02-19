@@ -55,9 +55,7 @@ namespace LogOut {
         }
 
         /// <summary>
-        /// Taks that gets application's handler and PID
-        /// Runs until those are found
-        /// Starts the positionHealthOverlay_Task task
+        /// Gets application's handler and PID
         /// </summary>
         private void FindGameHandle_Task() {
             // Flag that allows us to print messages like "Waiting for PoE process..."
@@ -101,9 +99,7 @@ namespace LogOut {
         }
 
         /// <summary>
-        /// Task that's run in the background from launch until program exit
-        /// Finds coordinates of game's window and does area calculations
-        /// Reacts to window position/size changes
+        /// Finds window coords and does area calculations
         /// </summary>
         private void PositionHealthOverlay_Task() {
             // Wait until game handle is found
@@ -124,7 +120,7 @@ namespace LogOut {
                 int height = winPos.Bottom - winPos.Top;
                 double half_width = width / 2.0;
 
-                // Calculate position for the healthbar that's above the char's head
+                //// Calculate position for the healthbar that's above the char's head
                 Settings.width = (int)(height * 9.6 / 100.0);
                 Settings.height = (int)(height * 1.7 / 100.0);
                 Settings.left = (int)(winPos.Left + half_width - Settings.width / 2.0);

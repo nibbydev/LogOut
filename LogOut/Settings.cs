@@ -25,7 +25,7 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "PoeLogout v2.0";
+        public const string programWindowTitle = "PoeLogout v2.1";
         public static uint processId;
         public static bool elevatedAccess = false;
 
@@ -42,19 +42,20 @@ namespace LogOut {
         public const int positionOverlayTaskDelayMS = 500;
 
         public static readonly int[,,] topBar = {
-            { {  58,  76 }, { 146, 174 }, {  67,  88 } },
-            { {  85, 129 }, { 158, 184 }, {  99, 164 } }, 
-            { {  60,  83 }, { 51,   75 }, {  49,  70 } },
-            { {  90, 100 }, { 99,  109 }, {  93, 103 } }, 
-            { { 115, 141 }, { 138, 173 }, { 131, 163 } }, 
-            { {  23,  38 }, { 135, 165 }, {  40,  54 } }, 
+            { {  58,  78 }, { 118, 174 }, {  66,  91 } },
+            { {  85, 129 }, { 158, 184 }, {  99, 164 } },
+            { {  60,  83 }, { 51,   81 }, {  49,  79 } },
+            { {  90, 100 }, { 99,  109 }, {  93, 103 } },
+            { { 107, 113 }, { 124, 130 }, { 116, 122 } },
+            { { 115, 141 }, { 138, 173 }, { 131, 163 } },
+            { {  23,  38 }, { 135, 165 }, {  40,  54 } },
             { {  23,  38 }, { 82,  125 }, {  25,  45 } },
-            { {  25,  55 }, { 8,    31 }, {  5,   21 } }
+            { {  25,  55 }, { 8,    31 }, {  5,   23 } }
         };
 
         public static readonly int[,,] bottomBar = {
-            { { 30, 60 }, { 20,   40 }, { 10, 55 } },
-            { { 70, 70 }, { 65,   65 }, { 25, 25 } }
+            { { 31, 46 }, { 17,   34 }, { 14, 39 } },
+            { { 31, 45 }, { 22,   34 }, { 46, 54 } }
         };
 
         // Healthbar tracking shenanigans
@@ -65,6 +66,6 @@ namespace LogOut {
         public static int width, height, left, top;
         public const int captureAreaMultiplier = 1;
         public const int colorOffset = 10;
-        public const int barCaptureOffset = 5;
+        public const int barHorizontalOffset = 5;
     }
 }
