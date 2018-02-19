@@ -4,4 +4,4 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:LogOut"
-        mc:Ignorable="d" Height="200" Width="200" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="True" Topmost="True" Background="Transparent" BorderThickness="1,0" BorderBrush="Red"/>
+        mc:Ignorable="d" Height="200" Width="200" AllowsTransparency="True" WindowStyle="None" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" Background="Transparent" BorderThickness="1,0" BorderBrush="Red"/>
