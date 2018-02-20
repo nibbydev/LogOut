@@ -12,16 +12,17 @@ namespace LogOut {
         private EventHandler keyboardEventHandler;
         private SettingsWindow settingsWindow;
         public static HealthBarTracker tracker;
-        public static Win32.WinPos lastWinPos;
         public static IntPtr client_hWnd;
         public static TextBox console;
 
         private Task findGameHandle_Task;
         private Task pollHealth_Task;
-        private Task positionOverlay_Task;
 
         public static HealthBarWindow healthBar;
         public static HealthOverlayWindow healthOverlay;
+
+        public static WinEventHook moveSizeEvent;
+        public static WinEventHook foregroundEvent;
 
         /// <summary>
         /// Initializes elements
@@ -50,8 +51,106 @@ namespace LogOut {
 
             // Run tasks
             findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
-            positionOverlay_Task = Task.Run(() => PositionHealthOverlay_Task());
             pollHealth_Task = Task.Run(() => tracker.PollHealth_Task());
+        }
+
+        /// <summary>
+        /// Applies various hooks via SetWinEventHook
+        /// </summary>
+        private void HookHooks() {
+            moveSizeEvent = new WinEventHook();
+            foregroundEvent = new WinEventHook();
+            moveSizeEvent.Hook(new WinEventHook.WinEventDelegate(SizeMoveCallback), Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
+            foregroundEvent.Hook(new WinEventHook.WinEventDelegate(ForegroundCallback), 0, Settings.EVENT_SYSTEM_FOREGROUND);
+        }
+
+        /// <summary>
+        /// When game client is moved or resized, recalculates overlay element positions
+        /// </summary>
+        /// <param name="hWinEventHook"></param>
+        /// <param name="eventType"></param>
+        /// <param name="hwnd"></param>
+        /// <param name="idObject"></param>
+        /// <param name="idChild"></param>
+        /// <param name="dwEventThread"></param>
+        /// <param name="dwmsEventTime"></param>
+        private void SizeMoveCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
+            Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
+
+            // Flip pause flag during window move
+            if (eventType == Settings.EVENT_SYSTEM_MOVESIZESTART) {
+                Settings.dontTrackImMoving = true;
+                if (Settings.healthBarEnabled && healthBar.IsVisible) healthBar.Hide();
+                if (Settings.showCaptureOverlay && healthOverlay.IsVisible) healthOverlay.Hide();
+                return;
+            }
+
+            Win32.WinPos winPos = new Win32.WinPos();
+            Win32.GetWindowRect(client_hWnd, ref winPos);
+
+            int gameWidth = winPos.Right - winPos.Left;
+            int gameHeight = winPos.Bottom - winPos.Top;
+
+            // Calculate healthbar size
+            Settings.barWidth = (int)Math.Round(gameHeight * 9.5 / 100.0); // needs to be a bit smaller (original 9.6)
+            Settings.barHeight = (int)Math.Round(gameHeight * 1.7 / 100.0);
+            Settings.barLeft = (int)Math.Round(winPos.Left + gameWidth / 2.0 - Settings.barWidth / 2.0);
+
+            // Some measurements are shared
+            Settings.captureWidth = Settings.barWidth;
+            Settings.captureLeft = Settings.barLeft;
+
+            // Calculate capture area
+            Settings.captureTop = (int)Math.Round(winPos.Top + gameHeight * 20 / 100.0);
+            Settings.captureHeight = (int)Math.Round(gameHeight / 2.0 - gameHeight * 25 / 100.0);
+
+            // Position UI elements
+            Dispatcher.Invoke(() => {
+                // Position big healthbar
+                healthBar.Width = (int)Math.Round(gameWidth * 30.0 / 100.0);
+                healthBar.Height = (int)Math.Round(gameHeight * 5.0 / 100.0);
+                healthBar.Left = (int)Math.Round(winPos.Left + gameWidth / 2.0 - healthBar.Width / 2.0);
+                healthBar.Top = (int)Math.Round(winPos.Top + gameHeight * 5.0 / 100.0);
+
+                // Position healthbar tracker
+                tracker.SetLocation();
+
+                // Position healthbar overlay
+                healthOverlay.Left = Settings.captureLeft;
+                healthOverlay.Top = Settings.captureTop;
+                healthOverlay.Width = Settings.captureWidth;
+                healthOverlay.Height = Settings.captureHeight;
+            });
+
+            if (eventType == Settings.EVENT_SYSTEM_MOVESIZEEND) {
+                Settings.dontTrackImMoving = false;
+                if (Settings.healthBarEnabled && !healthBar.IsVisible) healthBar.Show();
+                if (Settings.showCaptureOverlay && !healthOverlay.IsVisible) healthOverlay.Show();
+            }
+        }
+
+        /// <summary>
+        /// When another application gets foreground focus, pauses the program and hides UI elements
+        /// </summary>
+        /// <param name="hWinEventHook"></param>
+        /// <param name="eventType"></param>
+        /// <param name="hwnd"></param>
+        /// <param name="idObject"></param>
+        /// <param name="idChild"></param>
+        /// <param name="dwEventThread"></param>
+        /// <param name="dwmsEventTime"></param>
+        private void ForegroundCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
+            Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
+
+            if (Win32.IsTopmost()) {
+                Settings.dontTrackImMoving = false;
+                if (Settings.healthBarEnabled && !healthBar.IsVisible) healthBar.Show();
+                if (Settings.showCaptureOverlay && !healthOverlay.IsVisible) healthOverlay.Show();
+            } else {
+                Settings.dontTrackImMoving = true;
+                if (Settings.healthBarEnabled && healthBar.IsVisible) healthBar.Hide();
+                if (Settings.showCaptureOverlay && healthOverlay.IsVisible) healthOverlay.Hide();
+            }
         }
 
         /// <summary>
@@ -96,56 +195,11 @@ namespace LogOut {
             // and the message "Waiting for PoE process..." was displayed. So, naturally we need
             // to inform the user that the processs has been found now
             if (!runOnce) Log("PoE process found", 0);
-        }
 
-        /// <summary>
-        /// Finds window coords and does area calculations
-        /// </summary>
-        private void PositionHealthOverlay_Task() {
-            // Wait until game handle is found
-            while (Settings.processId <= 0) System.Threading.Thread.Sleep(10);
-
-            while (true) {
-                Win32.WinPos winPos = new Win32.WinPos();
-                Win32.GetWindowRect(client_hWnd, ref winPos);
-
-                // Recalculate x times a second
-                // Don't recalculate if there has been no change in window size/position
-                if (lastWinPos.Equals(winPos)) {
-                    System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
-                    continue;
-                } else lastWinPos = winPos; // Save latest window position
-
-                int width = winPos.Right - winPos.Left;
-                int height = winPos.Bottom - winPos.Top;
-                double half_width = width / 2.0;
-
-                // Don't run when game is minimized
-                if (winPos.Right < -width || winPos.Top < -height) {
-                    System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
-                    continue;
-                }
-
-                // Calculate position for the healthbar that's above the char's head
-                Settings.width = (int)(height * 9.6 / 100.0);
-                Settings.height = (int)(height * 1.7 / 100.0);
-                Settings.left = (int)(winPos.Left + half_width - Settings.width / 2.0);
-                Settings.top = (int)(winPos.Top + height * 30.9 / 100.0 + Settings.height);
-
-                // Position UI elements
-                Dispatcher.Invoke(() => {
-                    // Position big healthbar
-                    healthBar.Width = width * Settings.healthBarWidthPercent / 100.0;
-                    healthBar.Left = winPos.Left + half_width - healthBar.Width / 2.0;
-                    healthBar.Top = winPos.Top + 50;
-
-                    // Position healthbar overlay
-                    tracker.SetLocation();
-                });
-
-                // Pause briefly until checking for changes again
-                System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
-            }
+            // Hook events
+            Dispatcher.Invoke(() => HookHooks());
+            // Run the callback method using dummy variables
+            SizeMoveCallback(IntPtr.Zero, 0, IntPtr.Zero, 0, 0, 0, 0);
         }
 
         /// <summary>
@@ -180,6 +234,9 @@ namespace LogOut {
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
             KeyboardHook.KeyBoardAction -= keyboardEventHandler;
             KeyboardHook.Stop();
+
+            moveSizeEvent.UnHook();
+            foregroundEvent.UnHook();
 
             // Close app
             Application.Current.Shutdown();

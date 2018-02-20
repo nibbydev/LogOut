@@ -73,17 +73,6 @@ namespace LogOut {
             Settings.healthBarEnabled = (bool)CheckBox_ShowHealthBar.IsChecked;
             Settings.showCaptureOverlay = (bool)CheckBox_CaptureArea.IsChecked;
 
-            // Show/hide external UI elements
-            Application.Current.Dispatcher.Invoke(() => {
-                if (Settings.trackHealth) {
-                    if (Settings.healthBarEnabled)  MainWindow.healthBar.Show();
-                    else  MainWindow.healthBar.Hide();
-
-                    if (Settings.showCaptureOverlay)  MainWindow.healthOverlay.Show();
-                    else  MainWindow.healthOverlay.Hide();
-                }
-            });
-
             Hide();
         }
 

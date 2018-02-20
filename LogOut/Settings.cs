@@ -25,12 +25,11 @@ namespace LogOut {
 
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
-        public const string programWindowTitle = "PoeLogout v2.1.1";
+        public const string programWindowTitle = "PoeLogout v2.2.1";
         public static uint processId;
         public static bool elevatedAccess = false;
 
         // Health bar window
-        public const double healthBarWidthPercent = 30.0;
         public static volatile bool healthBarEnabled = false;
 
         // HealthManager
@@ -61,11 +60,18 @@ namespace LogOut {
         // Healthbar tracking shenanigans
         public static double total_life;
         public static double total_es;
-        public static volatile bool showCaptureOverlay;
+        public static volatile bool showCaptureOverlay = false;
 
-        public static int width, height, left, top;
-        public const int captureAreaMultiplier = 1;
+        public static int barTop, barHeight, barWidth, barLeft;
+        public static int captureWidth, captureHeight, captureLeft, captureTop;
+        public const int captureAreaMultiplier = 2;
         public const int colorOffset = 10;
         public const int barHorizontalOffset = 5;
+
+        // SetWinEventHook eventArgs
+        public const int EVENT_SYSTEM_MOVESIZESTART = 0x000A;
+        public const int EVENT_SYSTEM_MOVESIZEEND = 0x000B;
+        public const int EVENT_SYSTEM_FOREGROUND = 0x0003;
+        public static volatile bool dontTrackImMoving = false;
     }
 }

@@ -170,4 +170,56 @@ namespace LogOut {
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
     }
+
+    /// <summary>
+    /// Allows hooking to win events (eg window move/resize/minimize)
+    /// </summary>
+    public sealed class WinEventHook {
+        public delegate void WinEventDelegate(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+        private WinEventDelegate procDelegate;
+        private IntPtr windowEventHook;
+
+        private const int WINEVENT_INCONTEXT = 0x0004;
+        private const int WINEVENT_OUTOFCONTEXT = 0x0000;
+        private const int WINEVENT_SKIPOWNPROCESS = 0x0002;
+        private const int WINEVENT_SKIPOWNTHREAD = 0x0001;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+        public void Hook(WinEventDelegate procDelegate, uint pid, uint eventCode) {
+            if (windowEventHook == IntPtr.Zero) {
+                this.procDelegate = procDelegate;
+                windowEventHook = SetWinEventHook(eventCode, eventCode, IntPtr.Zero, procDelegate, pid, 0, WINEVENT_OUTOFCONTEXT);
+
+                if (windowEventHook == IntPtr.Zero) {
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                }
+            }
+        }
+
+        public void Hook(WinEventDelegate procDelegate, uint pid, uint eventStartCode, uint eventEndCode) {
+            if (windowEventHook == IntPtr.Zero) {
+                this.procDelegate = procDelegate;
+                windowEventHook = SetWinEventHook(eventStartCode, eventEndCode, IntPtr.Zero, procDelegate, pid, 0, WINEVENT_OUTOFCONTEXT);
+
+                if (windowEventHook == IntPtr.Zero) {
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                }
+            }
+        }
+
+        public void UnHook() {
+            if (windowEventHook != IntPtr.Zero) {
+                bool result = UnhookWinEvent(windowEventHook);
+
+                if (!result) {
+                    throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+                }
+            }
+        }
+    }
 }
