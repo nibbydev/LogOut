@@ -14,6 +14,7 @@ namespace LogOut {
         public static HealthBarTracker tracker;
         public static IntPtr client_hWnd;
         public static TextBox console;
+        Win32.WinPos lastWinPos;
 
         private Task findGameHandle_Task;
         private Task pollHealth_Task;
@@ -106,6 +107,9 @@ namespace LogOut {
 
             Win32.WinPos winPos = new Win32.WinPos();
             Win32.GetWindowRect(client_hWnd, ref winPos);
+
+            if (lastWinPos.Equals(winPos)) return;
+            lastWinPos = winPos;
 
             int gameWidth = winPos.Right - winPos.Left;
             int gameHeight = winPos.Bottom - winPos.Top;

@@ -137,8 +137,13 @@ namespace LogOut {
                     Color yColor = img.GetPixel(Settings.barHorizontalOffset, y);
                     int yMatch = FindBorderColorMatch(yColor);
                     if (yMatch == -1) continue;
-                } catch (ArgumentOutOfRangeException) {
-                    // Can't be bothered to figure out why this **extremelyrarely** throws an exception on window resize
+                } catch (ArgumentOutOfRangeException ex) {
+                    // Can't be bothered to figure out why this rarely throws an exception on window resize
+                    Console.WriteLine(ex);
+                    continue;
+                } catch (InvalidOperationException ex) {
+                    // Occurs rarely while img is being reassigned via SetLocation()
+                    Console.WriteLine(ex);
                     continue;
                 }
 
