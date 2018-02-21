@@ -14,7 +14,7 @@ namespace LogOut {
         public static HealthBarTracker tracker;
         public static IntPtr client_hWnd;
         public static TextBox console;
-        Win32.WinPos lastWinPos;
+        private Win32.WinPos lastWinPos;
 
         private Task findGameHandle_Task;
         private Task pollHealth_Task;

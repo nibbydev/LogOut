@@ -33,7 +33,8 @@ namespace LogOut {
             if (input != Settings.healthPollRateMS) {
                 if (input >= Settings.healthPollRate_Min && input <= Settings.healthPollRate_Max) {
                     MainWindow.Log("[Settings][Rate] " + Settings.healthPollRateMS + " -> " + input, -1);
-                    Settings.healthPollRateMS = input;
+                    if (input == 0) Settings.healthPollRateMS = 1;
+                    else Settings.healthPollRateMS = input;
                 } else {
                     TextBox_PollRate.Text = Settings.healthPollRateMS.ToString();
                     MainWindow.Log("[Settings][Rate] Error applying value " + input, -1);
