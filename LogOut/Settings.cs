@@ -38,7 +38,7 @@ namespace LogOut {
 
         // Delays
         public const int findGameTaskDelayMS = 1000;
-        public const int positionOverlayTaskDelayMS = 500;
+        public const int positionOverlayTaskDelayMS = 100;
 
         public static readonly int[,,] topBar = {
             { {  58,  78 }, { 118, 174 }, {  66,  91 } },

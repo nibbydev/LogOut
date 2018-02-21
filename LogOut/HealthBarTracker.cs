@@ -107,9 +107,8 @@ namespace LogOut {
             offset = FindBarOffset();
 
             // Error code. Unable to find health bar offset
-            if (offset == -1) {
-                MainWindow.Log(" Invalid offset: " + offset, -1);
-                img.Save("Screenshot_invalid_offset.png", System.Drawing.Imaging.ImageFormat.Png);
+            if (offset < 1) {
+                //MainWindow.Log(" Invalid offset: " + offset, -1);
                 return;
             }
 
@@ -134,9 +133,14 @@ namespace LogOut {
         /// <returns>How many px away is bottom border from the top</returns>
         private int FindBarOffset() {
             for (int y = Settings.captureHeight - 1; y > Settings.barHeight; y--) {
-                Color yColor = img.GetPixel(Settings.barHorizontalOffset, y);
-                int yMatch = FindBorderColorMatch(yColor);
-                if (yMatch == -1) continue;
+                try {
+                    Color yColor = img.GetPixel(Settings.barHorizontalOffset, y);
+                    int yMatch = FindBorderColorMatch(yColor);
+                    if (yMatch == -1) continue;
+                } catch (ArgumentOutOfRangeException) {
+                    // Can't be bothered to figure out why this **extremelyrarely** throws an exception on window resize
+                    continue;
+                }
 
                 Color zColor = img.GetPixel(Settings.barHorizontalOffset, y - barLocalOffset);
                 int zMatch = FindHealthColorMatch(zColor);
@@ -206,7 +210,7 @@ namespace LogOut {
         /// </summary>
         /// <returns>Remaining health as 0-100</returns>
         public double GetEHPAsPercentage() {
-            StringBuilder displayLine = new StringBuilder("|", Settings.barWidth);
+            //StringBuilder displayLine = new StringBuilder("|", Settings.barWidth);
             double proL = 0, proE = 0;
             int tot = 0, err = 0;
 
@@ -218,7 +222,7 @@ namespace LogOut {
                         proL++;
                         proE++;
                         tot++;
-                        displayLine.Append("#");
+                        //displayLine.Append("#");
                         break;
                     case 2:
                     case 3:
@@ -226,28 +230,28 @@ namespace LogOut {
                     case 5:
                         proE++;
                         tot++;
-                        displayLine.Append("=");
+                        //displayLine.Append("=");
                         break;
                     case 6:
                     case 7:
                         proL++;
                         tot++;
-                        displayLine.Append("I");
+                        //displayLine.Append("I");
                         break;
                     case 8:
                         tot++;
-                        displayLine.Append(" ");
+                        //displayLine.Append(" ");
                         break;
                     case -1:
                         err++;
-                        displayLine.Append("?");
+                        //displayLine.Append("?");
                         break;
                 }
             }
 
             // Print displayLine to console
-            displayLine.Append("|");
-            Console.WriteLine(displayLine.ToString());
+            //displayLine.Append("|");
+            //Console.WriteLine(displayLine.ToString());
 
             // If more than a third of the pixels were unreadable, return errorcode
             if (err > Settings.barWidth / 3) return -1;

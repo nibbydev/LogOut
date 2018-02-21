@@ -17,6 +17,7 @@ namespace LogOut {
 
         private Task findGameHandle_Task;
         private Task pollHealth_Task;
+        private Task positionOverlay_Task;
 
         public static HealthBarWindow healthBar;
         public static HealthOverlayWindow healthOverlay;
@@ -52,16 +53,20 @@ namespace LogOut {
             // Run tasks
             findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
             pollHealth_Task = Task.Run(() => tracker.PollHealth_Task());
+            positionOverlay_Task = Task.Run(() => PositionHealthOverlay_Task());
         }
 
         /// <summary>
-        /// Applies various hooks via SetWinEventHook
+        /// Applies various system hooks via SetWinEventHook
         /// </summary>
         private void HookHooks() {
             moveSizeEvent = new WinEventHook();
             foregroundEvent = new WinEventHook();
-            moveSizeEvent.Hook(new WinEventHook.WinEventDelegate(SizeMoveCallback), Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
-            foregroundEvent.Hook(new WinEventHook.WinEventDelegate(ForegroundCallback), 0, Settings.EVENT_SYSTEM_FOREGROUND);
+
+            WinEventHook.WinEventDelegate procDelegate = new WinEventHook.WinEventDelegate(EventCallback);
+
+            moveSizeEvent.Hook(procDelegate, Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
+            foregroundEvent.Hook(procDelegate, 0, Settings.EVENT_SYSTEM_FOREGROUND);
         }
 
         /// <summary>
@@ -74,8 +79,22 @@ namespace LogOut {
         /// <param name="idChild"></param>
         /// <param name="dwEventThread"></param>
         /// <param name="dwmsEventTime"></param>
-        private void SizeMoveCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
-            Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
+        private void EventCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
+            if (eventType > 0) Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
+
+            // Foreground window change event
+            if (eventType == Settings.EVENT_SYSTEM_FOREGROUND) {
+                // When another application gets foreground focus, pause the program and hides UI elements
+                if (Win32.IsTopmost()) {
+                    Settings.dontTrackImMoving = false;
+                    if (Settings.healthBarEnabled && !healthBar.IsVisible) healthBar.Show();
+                    if (Settings.showCaptureOverlay && !healthOverlay.IsVisible) healthOverlay.Show();
+                } else {
+                    Settings.dontTrackImMoving = true;
+                    if (Settings.healthBarEnabled && healthBar.IsVisible) healthBar.Hide();
+                    if (Settings.showCaptureOverlay && healthOverlay.IsVisible) healthOverlay.Hide();
+                }
+            }
 
             // Flip pause flag during window move
             if (eventType == Settings.EVENT_SYSTEM_MOVESIZESTART) {
@@ -92,7 +111,7 @@ namespace LogOut {
             int gameHeight = winPos.Bottom - winPos.Top;
 
             // Calculate healthbar size
-            Settings.barWidth = (int)Math.Round(gameHeight * 9.5 / 100.0); // needs to be a bit smaller (original 9.6)
+            Settings.barWidth = (int)Math.Round(gameHeight * 9.6 / 100.0);
             Settings.barHeight = (int)Math.Round(gameHeight * 1.7 / 100.0);
             Settings.barLeft = (int)Math.Round(winPos.Left + gameWidth / 2.0 - Settings.barWidth / 2.0);
 
@@ -130,31 +149,7 @@ namespace LogOut {
         }
 
         /// <summary>
-        /// When another application gets foreground focus, pauses the program and hides UI elements
-        /// </summary>
-        /// <param name="hWinEventHook"></param>
-        /// <param name="eventType"></param>
-        /// <param name="hwnd"></param>
-        /// <param name="idObject"></param>
-        /// <param name="idChild"></param>
-        /// <param name="dwEventThread"></param>
-        /// <param name="dwmsEventTime"></param>
-        private void ForegroundCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
-            Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
-
-            if (Win32.IsTopmost()) {
-                Settings.dontTrackImMoving = false;
-                if (Settings.healthBarEnabled && !healthBar.IsVisible) healthBar.Show();
-                if (Settings.showCaptureOverlay && !healthOverlay.IsVisible) healthOverlay.Show();
-            } else {
-                Settings.dontTrackImMoving = true;
-                if (Settings.healthBarEnabled && healthBar.IsVisible) healthBar.Hide();
-                if (Settings.showCaptureOverlay && healthOverlay.IsVisible) healthOverlay.Hide();
-            }
-        }
-
-        /// <summary>
-        /// Gets application's handler and PID
+        /// Gets game client's handler and PID
         /// </summary>
         private void FindGameHandle_Task() {
             // Flag that allows us to print messages like "Waiting for PoE process..."
@@ -199,7 +194,22 @@ namespace LogOut {
             // Hook events
             Dispatcher.Invoke(() => HookHooks());
             // Run the callback method using dummy variables
-            SizeMoveCallback(IntPtr.Zero, 0, IntPtr.Zero, 0, 0, 0, 0);
+            EventCallback(IntPtr.Zero, 0, IntPtr.Zero, 0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Periodically checks the game client's position
+        /// </summary>
+        private void PositionHealthOverlay_Task() {
+            while (true) {
+                System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
+
+                // Wait until game handle is found
+                if (Settings.processId <= 0) continue;
+
+                // Run the callback method using dummy variables
+                EventCallback(IntPtr.Zero, 0, IntPtr.Zero, 0, 0, 0, 0);
+            }
         }
 
         /// <summary>
@@ -235,7 +245,7 @@ namespace LogOut {
             KeyboardHook.KeyBoardAction -= keyboardEventHandler;
             KeyboardHook.Stop();
 
-            moveSizeEvent.UnHook();
+            moveSizeEvent.UnHook(); 
             foregroundEvent.UnHook();
 
             // Close app
