@@ -55,15 +55,16 @@ namespace LogOut {
             findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
             pollHealth_Task = Task.Run(() => tracker.PollHealth_Task());
             positionOverlay_Task = Task.Run(() => PositionHealthOverlay_Task());
+
+            // Define hooks
+            moveSizeEvent = new WinEventHook();
+            foregroundEvent = new WinEventHook();
         }
 
         /// <summary>
         /// Applies various system hooks via SetWinEventHook
         /// </summary>
         private void HookHooks() {
-            moveSizeEvent = new WinEventHook();
-            foregroundEvent = new WinEventHook();
-
             WinEventHook.WinEventDelegate procDelegate = new WinEventHook.WinEventDelegate(EventCallback);
 
             moveSizeEvent.Hook(procDelegate, Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
