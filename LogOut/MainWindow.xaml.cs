@@ -22,6 +22,7 @@ namespace LogOut {
 
         public static HealthBarWindow healthBar;
         public static HealthOverlayWindow healthOverlay;
+        public static NewVersionWindow newVersion;
 
         public static WinEventHook moveSizeEvent;
         public static WinEventHook foregroundEvent;
@@ -37,15 +38,16 @@ namespace LogOut {
             tracker = new HealthBarTracker();
             settingsWindow = new SettingsWindow();
             healthOverlay = new HealthOverlayWindow();
+            newVersion = new NewVersionWindow();
 
             // Assign console box to static variable
             console = TextBox_Console;
 
             // Set window title
-            Title = Settings.programWindowTitle;
+            Title = Settings.programTitle + " " + Settings.programVersion;
 
             // Print credentials
-            Log(Settings.programWindowTitle + " by Siegrest", 0);
+            Log(Settings.programTitle + " " + Settings.programVersion + " by Siegrest", 0);
 
             // Warn user on no admin rights
             Settings.elevatedAccess = Win32.CheckElevation();
