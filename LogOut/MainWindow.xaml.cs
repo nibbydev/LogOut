@@ -22,7 +22,7 @@ namespace LogOut {
 
         public static HealthBarWindow healthBar;
         public static HealthOverlayWindow healthOverlay;
-        public static NewVersionWindow newVersion;
+        public static UpdateWindow newVersion;
 
         public static WinEventHook moveSizeEvent;
         public static WinEventHook foregroundEvent;
@@ -32,13 +32,6 @@ namespace LogOut {
         /// </summary>
         public MainWindow() {
             InitializeComponent();
-
-            // Init instances
-            healthBar = new HealthBarWindow();
-            tracker = new HealthBarTracker();
-            settingsWindow = new SettingsWindow();
-            healthOverlay = new HealthOverlayWindow();
-            newVersion = new NewVersionWindow();
 
             // Assign console box to static variable
             console = TextBox_Console;
@@ -52,6 +45,13 @@ namespace LogOut {
             // Warn user on no admin rights
             Settings.elevatedAccess = Win32.CheckElevation();
             if (!Settings.elevatedAccess) Log("Elevated access required for disconnect", 1);
+
+            // Init instances
+            healthBar = new HealthBarWindow();
+            tracker = new HealthBarTracker();
+            settingsWindow = new SettingsWindow();
+            healthOverlay = new HealthOverlayWindow();
+            newVersion = new UpdateWindow();
 
             // Run tasks
             findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
@@ -295,18 +295,21 @@ namespace LogOut {
                     prefix = "[DEBUG]";
                     break;
                 case 0:
-                    prefix = "[INFO] ";
+                    prefix = "[INFO]";
                     break;
                 case 1:
-                    prefix = "[WARN] ";
+                    prefix = "[WARN]";
                     break;
                 case 2:
-                    prefix = "[ERROR] ";
+                    prefix = "[ERROR]";
                     break;
                 case 3:
-                    prefix = "[CRITICAL] ";
+                    prefix = "[CRITICAL]";
                     break;
             }
+
+            // Add a space if there's no additional box
+            if (str[0] != '[') prefix += " ";
 
             string time = string.Format("{0:HH:mm:ss}", DateTime.Now);
             Application.Current.Dispatcher.Invoke(() => {

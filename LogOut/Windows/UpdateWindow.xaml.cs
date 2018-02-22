@@ -7,12 +7,12 @@ using System.Windows;
 
 namespace LogOut {
     /// <summary>
-    /// Interaction logic for NewVersionWindow.xaml
+    /// Interaction logic for UpdateWindow.xaml
     /// </summary>
-    public partial class NewVersionWindow : Window {
+    public partial class UpdateWindow : Window {
         private WebClient webClient;
 
-        public NewVersionWindow() {
+        public UpdateWindow() {
             InitializeComponent();
 
             webClient = new WebClient();
@@ -27,7 +27,7 @@ namespace LogOut {
         /// <returns>Latest release object</returns>
         private ReleaseObject GetLatestRelease() {
             try {
-                string jsonString = webClient.DownloadString("https://api.github.com/repos/siegrest/LogOut/releases");
+                string jsonString = webClient.DownloadString(Settings.programReleaseAPI);
                 List<ReleaseObject> tempList = new JavaScriptSerializer().Deserialize<List<ReleaseObject>>(jsonString);
 
                 if (tempList == null) return null;
@@ -45,18 +45,48 @@ namespace LogOut {
         private void Run() {
             ReleaseObject latest = GetLatestRelease();
             if (latest == null) {
+                MainWindow.Log("[Updater] Error getting update info...", 2);
                 return;
-            } else if (latest.tag_name == Settings.programVersion) {
+            } else if (!CompareVersions(latest.tag_name)) {
                 return;
-            };
+            }
 
             Dispatcher.Invoke(() => {
                 Label_NewVersion.Content = latest.tag_name;
                 Label_CurrentVersion.Content = Settings.programVersion;
                 HyperLink_URL.NavigateUri = new Uri(latest.html_url);
-
+                HyperLink_URL_Direct.NavigateUri = new Uri(latest.assets[0].browser_download_url);
+                MainWindow.Log("[Updater] New version available", 1);
                 ShowDialog();
             });
+        }
+
+        /// <summary>
+        /// Compares input and version in settings
+        /// </summary>
+        /// <param name="input">Version string (eg "v2.3.1")</param>
+        /// <returns>True if current version is old</returns>
+        private bool CompareVersions(string input) {
+            string[] splitNew = input.Substring(1).Split('.');
+            string[] splitOld = Settings.programVersion.Substring(1).Split('.');
+
+            int oldLen = splitOld.Length;
+            int newLen = splitNew.Length;
+
+            int totLen;
+            if (newLen > oldLen) totLen = newLen;
+            else totLen = oldLen;
+
+            for (int i = 0; i < totLen; i++) {
+                int resultNew = 0, resultOld = 0;
+
+                if (newLen > i) Int32.TryParse(splitNew[i], out resultNew);
+                if (oldLen > i) Int32.TryParse(splitOld[i], out resultOld);
+
+                if (resultNew > resultOld) return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -74,5 +104,12 @@ namespace LogOut {
         public string html_url { get; set; } 
         public string tag_name { get; set; }
         public string name { get; set; }
+        public List<AssetObject> assets { get; set; }
+    }
+
+    sealed class AssetObject {
+        public string name { get; set; }
+        public string size { get; set; }
+        public string browser_download_url { get; set; }
     }
 }

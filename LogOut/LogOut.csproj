@@ -65,8 +65,8 @@
     </ApplicationDefinition>
     <Compile Include="HealthBarTracker.cs" />
     <Compile Include="Settings.cs" />
-    <Compile Include="Windows\NewVersionWindow.xaml.cs">
-      <DependentUpon>NewVersionWindow.xaml</DependentUpon>
+    <Compile Include="Windows\UpdateWindow.xaml.cs">
+      <DependentUpon>UpdateWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Windows\HealthBarWindow.xaml.cs">
       <DependentUpon>HealthBarWindow.xaml</DependentUpon>
@@ -90,7 +90,7 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="Windows\NewVersionWindow.xaml">
+    <Page Include="Windows\UpdateWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

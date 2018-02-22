@@ -26,7 +26,7 @@ namespace LogOut {
         // MainWindow
         public const string clientWindowTitle = "Path of Exile";
         public const string programTitle = "PoeLogout";
-        public const string programVersion = "v2.3.5";
+        public const string programVersion = "v2.3.6";
         public static uint processId;
         public static bool elevatedAccess = false;
 
@@ -74,5 +74,8 @@ namespace LogOut {
         public const int EVENT_SYSTEM_MOVESIZEEND = 0x000B;
         public const int EVENT_SYSTEM_FOREGROUND = 0x0003;
         public static volatile bool dontTrackImMoving = false;
+
+        // Updater
+        public const string programReleaseAPI = "https://api.github.com/repos/siegrest/LogOut/releases";
     }
 }
