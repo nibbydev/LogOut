@@ -20,6 +20,10 @@
 5. Enable "TCP disconnect" checkbox (make sure the program is running with elevated privileges)
 6. Test with Righteous Fire gem or with Sapping Mana Flask
 
+## Disclaimer
+This program was created as a study project and is not intended to be used in daily gameplay.
+Although screen capture and pixel matching are used to keep track of the player's health (without interacting with the game in any way), it is not allowed by GGG.
+
 ## Words of warning
 * This has not been tested for suitability on HC
 * Checking "Work minimized" is not advised
