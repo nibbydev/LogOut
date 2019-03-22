@@ -28,10 +28,10 @@ namespace LogOut {
         private ReleaseObject GetLatestRelease() {
             try {
                 string jsonString = webClient.DownloadString(Settings.programReleaseAPI);
-                List<ReleaseObject> tempList = new JavaScriptSerializer().Deserialize<List<ReleaseObject>>(jsonString);
+                List<ReleaseObject> releaseList = new JavaScriptSerializer().Deserialize<List<ReleaseObject>>(jsonString);
 
-                if (tempList == null) return null;
-                else return tempList[0];
+                if (releaseList == null) return null;
+                else return releaseList[0];
             } catch (Exception ex) {
                 Console.WriteLine(ex);
             }

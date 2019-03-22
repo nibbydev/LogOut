@@ -1,24 +1,26 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Windows;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Controls;
+using System.Windows;
+using System.Windows.Forms;
+using Utility;
+using Application = System.Windows.Application;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace LogOut {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window {
         private EventHandler keyboardEventHandler;
-        private SettingsWindow settingsWindow;
-        public static HealthBarTracker tracker;
-        public static IntPtr client_hWnd;
-        public static TextBox console;
+        private readonly SettingsWindow settingsWindow;
+        private static HealthProcessor _tracker;
+        private static IntPtr _clientHWnd;
+        private static TextBox _console;
         private Win32.WinPos lastWinPos;
 
-        private Task findGameHandle_Task;
-        private Task pollHealth_Task;
-        private Task positionOverlay_Task;
+        private Task taskFindGameHandle;
+        private Task taskPollHealth;
+        private Task taskPositionOverlay;
 
         public static HealthBarWindow healthBar;
         public static HealthOverlayWindow healthOverlay;
@@ -33,14 +35,9 @@ namespace LogOut {
         public MainWindow() {
             InitializeComponent();
 
-            // Assign console box to static variable
-            console = TextBox_Console;
-
-            // Set window title
-            Title = Settings.programTitle + " " + Settings.programVersion;
-
-            // Print credentials
-            Log(Settings.programTitle + " " + Settings.programVersion + " by Siegrest", 0);
+            _console = TextBox_Console;
+            Title = $"{Settings.programTitle} {Settings.programVersion}";
+            Log(Title, 0);
 
             // Warn user on no admin rights
             Settings.elevatedAccess = Win32.CheckElevation();
@@ -48,15 +45,15 @@ namespace LogOut {
 
             // Init instances
             healthBar = new HealthBarWindow();
-            tracker = new HealthBarTracker();
+            //_tracker = new HealthBarProcessor();
             settingsWindow = new SettingsWindow();
             healthOverlay = new HealthOverlayWindow();
             newVersion = new UpdateWindow();
 
             // Run tasks
-            findGameHandle_Task = Task.Run(() => FindGameHandle_Task());
-            pollHealth_Task = Task.Run(() => tracker.PollHealth_Task());
-            positionOverlay_Task = Task.Run(() => PositionHealthOverlay_Task());
+            taskFindGameHandle = Task.Run(() => FindGameHandle_Task());
+            taskPollHealth = Task.Run(() => _tracker.Run());
+            taskPositionOverlay = Task.Run(() => PositionHealthOverlay_Task());
 
             // Define hooks
             moveSizeEvent = new WinEventHook();
@@ -67,29 +64,21 @@ namespace LogOut {
         /// Applies various system hooks via SetWinEventHook
         /// </summary>
         private void HookHooks() {
-            WinEventHook.WinEventDelegate procDelegate = new WinEventHook.WinEventDelegate(EventCallback);
-
-            moveSizeEvent.Hook(procDelegate, Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
-            foregroundEvent.Hook(procDelegate, 0, Settings.EVENT_SYSTEM_FOREGROUND);
+            moveSizeEvent.Hook(EventCallback, Settings.processId, Settings.EVENT_SYSTEM_MOVESIZESTART, Settings.EVENT_SYSTEM_MOVESIZEEND);
+            foregroundEvent.Hook(EventCallback, 0, Settings.EVENT_SYSTEM_FOREGROUND);
+            foregroundEvent.Hook(EventCallback, 0, Settings.EVENT_SYSTEM_FOREGROUND);
         }
 
         /// <summary>
         /// When game client is moved or resized, recalculates overlay element positions
         /// </summary>
-        /// <param name="hWinEventHook"></param>
-        /// <param name="eventType"></param>
-        /// <param name="hwnd"></param>
-        /// <param name="idObject"></param>
-        /// <param name="idChild"></param>
-        /// <param name="dwEventThread"></param>
-        /// <param name="dwmsEventTime"></param>
         private void EventCallback(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime) {
             if (eventType > 0) Log("[winEvent] Event (" + eventType + "): " + hwnd, -1);
 
             // Foreground window change event
             if (eventType == Settings.EVENT_SYSTEM_FOREGROUND) {
                 // When another application gets foreground focus, pause the program and hides UI elements
-                if (Win32.IsTopmost()) {
+                if (Win32.IsTopmost(Settings.clientWindowTitle)) {
                     Settings.dontTrackImMoving = false;
                     if (Settings.healthBarEnabled && !healthBar.IsVisible) healthBar.Show();
                     if (Settings.showCaptureOverlay && !healthOverlay.IsVisible) healthOverlay.Show();
@@ -108,16 +97,16 @@ namespace LogOut {
                 return;
             }
 
-            Win32.WinPos winPos = new Win32.WinPos();
-            Win32.GetWindowRect(client_hWnd, ref winPos);
+            var winPos = new Win32.WinPos();
+            Win32.GetWindowRect(_clientHWnd, ref winPos);
 
             if (lastWinPos.Equals(winPos)) return;
             lastWinPos = winPos;
 
-            int gameWidth = winPos.Right - winPos.Left;
-            int gameHeight = winPos.Bottom - winPos.Top;
+            var gameWidth = winPos.Right - winPos.Left;
+            var gameHeight = winPos.Bottom - winPos.Top;
 
-            // Calculate healthbar size
+            // Calculate health bar size
             Settings.barWidth = (int)Math.Round(gameHeight * 9.6 / 100.0);
             Settings.barHeight = (int)Math.Round(gameHeight * 1.7 / 100.0);
             Settings.barLeft = (int)Math.Round(winPos.Left + gameWidth / 2.0 - Settings.barWidth / 2.0);
@@ -132,16 +121,16 @@ namespace LogOut {
 
             // Position UI elements
             Dispatcher.Invoke(() => {
-                // Position big healthbar
+                // Position big health bar
                 healthBar.Width = (int)Math.Round(gameWidth * 30.0 / 100.0);
                 healthBar.Height = (int)Math.Round(gameHeight * 5.0 / 100.0);
                 healthBar.Left = (int)Math.Round(winPos.Left + gameWidth / 2.0 - healthBar.Width / 2.0);
                 healthBar.Top = (int)Math.Round(winPos.Top + gameHeight * 5.0 / 100.0);
 
-                // Position healthbar tracker
-                tracker.SetLocation();
+                // Position health bar tracker
+                _tracker.UpdateCaptureLocation();
 
-                // Position healthbar overlay
+                // Position health bar overlay
                 healthOverlay.Left = Settings.captureLeft;
                 healthOverlay.Top = Settings.captureTop;
                 healthOverlay.Width = Settings.captureWidth;
@@ -168,22 +157,22 @@ namespace LogOut {
                 // Get process handler from name
                 foreach (Process proc in Process.GetProcesses())
                     if (proc.MainWindowTitle == Settings.clientWindowTitle)
-                        client_hWnd = proc.MainWindowHandle;
+                        _clientHWnd = proc.MainWindowHandle;
 
                 // If PoE is not running
-                if (client_hWnd == IntPtr.Zero) {
+                if (_clientHWnd == IntPtr.Zero) {
                     // If first run print text
                     if (runOnce) {
                         runOnce = false;
                         Log("Waiting for PoE process...", 0);
                     }
 
-                    System.Threading.Thread.Sleep(Settings.findGameTaskDelayMS);
+                    Thread.Sleep(Settings.findGameTaskDelayMS);
                     continue;
                 }
 
                 // Get window PID from handler
-                Win32.GetWindowThreadProcessId(client_hWnd, out Settings.processId);
+                Win32.GetWindowThreadProcessId(_clientHWnd, out Settings.processId);
                 // Not 100% sure if needed but I'll keep it here just to be safe
                 if (Settings.processId <= 0) continue;
 
@@ -209,7 +198,7 @@ namespace LogOut {
         /// </summary>
         private void PositionHealthOverlay_Task() {
             while (true) {
-                System.Threading.Thread.Sleep(Settings.positionOverlayTaskDelayMS);
+                Thread.Sleep(Settings.positionOverlayTaskDelayMS);
 
                 // Wait until game handle is found
                 if (Settings.processId <= 0) continue;
@@ -222,35 +211,31 @@ namespace LogOut {
         /// <summary>
         /// Keyboard event handler. Fires when the hotkey is pressed
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void Event_Keyboard(object sender, EventArgs e) {
             Log("[KEY] Captured hotkey", -1);
 
             if (Settings.saveKey) {
                 Settings.saveKey = false;
                 Button_SetHotkey.IsEnabled = true;
-                Log("Assigned TCP disconnect to key: " + (System.Windows.Forms.Keys)Settings.logOutHotKey, 0);
+                Log("Assigned TCP disconnect to key: " + (Keys)Settings.logOutHotKey, 0);
                 return;
             }
 
             // Don't send disconnect if game is minimized and checkbox is not ticked
-            if (Settings.workMinimized && !Win32.IsTopmost()) return;
+            if (Settings.workMinimized && !Win32.IsTopmost(Settings.clientWindowTitle)) return;
 
             // Send disconnect signal
             Log("Closing TCP connections...", 0);
-            long delay = KillTCP.KillTCPConnectionForProcess();
+            var delay = TcpSever.SeverTcp(Settings.processId);
             Log("Closed connections (took " + delay + " ms)", 0);
         }
 
         /// <summary>
         /// Event handler that closes hooks on program exit
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
+        private void Window_Closing(object sender, CancelEventArgs e) {
             KeyboardHook.KeyBoardAction -= keyboardEventHandler;
-            KeyboardHook.Stop();
+            KeyboardHook.UnHook();
 
             moveSizeEvent.UnHook(); 
             foregroundEvent.UnHook();
@@ -262,8 +247,6 @@ namespace LogOut {
         /// <summary>
         /// Event handler that flips a flag
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void Button_SetHotkey_Click(object sender, RoutedEventArgs e) {
             Log("Press any key...", 0);
             Button_SetHotkey.IsEnabled = false;
@@ -272,17 +255,15 @@ namespace LogOut {
 
             // Hook keyboard. This only runs once
             if (Settings.logOutHotKey == 0) {
-                keyboardEventHandler = new EventHandler(Event_Keyboard);
+                keyboardEventHandler = Event_Keyboard;
                 KeyboardHook.KeyBoardAction += keyboardEventHandler;
-                KeyboardHook.Start();
+                KeyboardHook.Hook();
             }
         }
 
         /// <summary>
         /// Timestamp and prefix local console messages
         /// </summary>
-        /// <param name="str"></param>
-        /// <param name="status"></param>
         public static void Log(string str, int status) {
             string prefix;
 
@@ -313,16 +294,14 @@ namespace LogOut {
 
             string time = string.Format("{0:HH:mm:ss}", DateTime.Now);
             Application.Current.Dispatcher.Invoke(() => {
-                console.AppendText("[" + time + "]" + prefix + str + "\n");
-                console.ScrollToEnd();
+                _console.AppendText("[" + time + "]" + prefix + str + "\n");
+                _console.ScrollToEnd();
             });
         }
 
         /// <summary>
         /// Opens the Settings panel as dialog
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void Button_Settings_Click(object sender, RoutedEventArgs e) {
             settingsWindow.ShowDialog();
         }
