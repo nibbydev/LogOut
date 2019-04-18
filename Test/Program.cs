@@ -8,7 +8,7 @@ namespace Test {
 
             tracker.updateTrackerCaptureLocation = processor.UpdateCaptureLocation;
 
-            //tracker.OverWriteGameHandle("Spotify");
+            //tracker.OverWriteGameHandle("notepad++");
             tracker.FindGameHandle();
             
             processor.Run();

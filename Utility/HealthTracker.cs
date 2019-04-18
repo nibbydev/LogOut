@@ -44,7 +44,7 @@ namespace Utility {
                     if (!proc.MainWindowTitle.Equals(TargetWindowTitle)) {
                         continue;
                     }
-
+                    
                     gameHWnd = proc.MainWindowHandle;
                     processId = (uint) proc.Id;
                     break;
@@ -83,22 +83,27 @@ namespace Utility {
 
             if (lastWinPos.Equals(winPos)) return;
             lastWinPos = winPos;
+            
+            // Window height scale multiplier for the health globe
+            const double globeWhsm = 4.80f;
+            const double captureOffset = 0.935f;
 
-            var gameWidth = winPos.Right - winPos.Left;
-            var gameHeight = winPos.Bottom - winPos.Top;
+            // Window size correction
+            const int borderOffset = 16;
+            const int titleBarOffset = 39;
 
-            // Calculate health bar size
-            BarPos.Width = (int) Math.Round(gameHeight * 9.6 / 100.0);
-            BarPos.Height = (int) Math.Round(gameHeight * 1.7 / 100.0);
-            BarPos.Left = (int) Math.Round(winPos.Left + gameWidth / 2.0 - BarPos.Width / 2.0);
+            var gameWidth = winPos.Right - winPos.Left - borderOffset;
+            var gameHeight = winPos.Bottom - winPos.Top - titleBarOffset;
 
-            // Some measurements are shared
-            CapturePos.Width = BarPos.Width;
-            CapturePos.Left = BarPos.Left;
+            var captureSize = (int) Math.Floor(gameHeight / globeWhsm);
+            var captureOffsetPixels = (int) Math.Floor(captureSize * (1 - captureOffset));
 
-            // Calculate capture area
-            CapturePos.Top = (int) Math.Round(winPos.Top + gameHeight * 26 / 100.0);
-            CapturePos.Height = (int) Math.Round(gameHeight / 2.0 - gameHeight * 40 / 100.0);
+            // Position capture area over health globe
+            CapturePos.Left = winPos.Left + borderOffset / 2 + captureOffsetPixels;
+            CapturePos.Top = winPos.Bottom - borderOffset / 2 - captureSize + captureOffsetPixels;
+            
+            CapturePos.Width = captureSize - captureOffsetPixels;
+            CapturePos.Height = captureSize - captureOffsetPixels;
 
             // Update positions
             updateTrackerCaptureLocation.Invoke();

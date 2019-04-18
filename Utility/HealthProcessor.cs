@@ -97,7 +97,7 @@ namespace Utility {
 
 
         private readonly PictureBox PictureBox;
-        private readonly Form ImgBox;
+        private readonly Form ImgWindow;
 
 
         private readonly HealthTracker tracker;
@@ -107,27 +107,25 @@ namespace Utility {
 
             PictureBox = new PictureBox {
                 Dock = DockStyle.Fill,
-                SizeMode = PictureBoxSizeMode.CenterImage
+                SizeMode = PictureBoxSizeMode.Normal
             };
 
-            ImgBox = new Form {
-                StartPosition = FormStartPosition.CenterScreen,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ImgWindow = new Form {
+                //StartPosition = FormStartPosition.CenterScreen,
                 Size = new Size(200, 60),
                 Controls = {PictureBox}
             };
 
-            new Task(() => ImgBox.ShowDialog()).Start();
+            new Task(() => ImgWindow.ShowDialog()).Start();
         }
 
-
-        private Size lastPicBoxSize;
 
         private void UpdatePicBox() {
             const int zoom = 4;
 
             var zoomed = new Bitmap(img.Size.Width * zoom, img.Size.Height * zoom);
             using (var g = Graphics.FromImage(zoomed)) {
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.InterpolationMode = InterpolationMode.NearestNeighbor;
                 g.DrawImage(img, new Rectangle(Point.Empty, zoomed.Size));
             }
@@ -135,7 +133,7 @@ namespace Utility {
             PictureBox.Image?.Dispose();
             PictureBox.Image = zoomed;
 
-            ImgBox.Size = new Size((int) (img.Size.Width * zoom * 1.1), (int) (img.Size.Height * zoom * 1.2));
+            ImgWindow.Size = new Size((int) (img.Size.Width * zoom * 1.1), (int) (img.Size.Height * zoom * 1.2));
         }
 
 
@@ -219,9 +217,15 @@ namespace Utility {
         /// Change screen capture location and size
         /// </summary>
         public void UpdateCaptureLocation() {
+            if (tracker.CapturePos.Width <= 0 || tracker.CapturePos.Height <= 0) {
+                throw new ArgumentException();
+            }
+
             size = new Size(tracker.CapturePos.Width, tracker.CapturePos.Height);
             currentHealthState = new int[tracker.BarPos.Width];
             barLocalOffset = (int) Math.Round(tracker.BarPos.Height / 4.0 * 3.0);
+
+            Console.WriteLine($"{tracker.CapturePos.Width} {tracker.CapturePos.Height}");
 
             img = new Bitmap(tracker.CapturePos.Width, tracker.CapturePos.Height, PixelFormat.Format32bppArgb);
             gfx = Graphics.FromImage(img);
@@ -229,12 +233,127 @@ namespace Utility {
         }
 
 
+        private static void LoopArray<T>(IReadOnlyList<T[]> array, Action<int, int, T> action) {
+            for (var curve = 0; curve < array.Count; curve++) {
+                for (var y = 0; y < array[curve].Length; y++) {
+                    action(curve, y, array[curve][y]);
+                }
+            }
+        }
+
+
+        private static Color[][] GetColors(Bitmap img, int[][] coords) {
+            var colors = new Color[coords.Length][];
+
+            for (var curve = 0; curve < coords.Length; curve++) {
+                colors[curve] = new Color[coords[curve].Length];
+
+                for (var y = 0; y < coords[curve].Length; y++) {
+                    var x = coords[curve][y];
+
+                    colors[curve][y] = img.GetPixel(x, y);
+                }
+            }
+
+            return colors;
+        }
+
+        private static bool GetEllipseX(int size, double curve, int y, out int x) {
+            if (curve < 0 || curve > 1 || size < 0 || y < 0 || y > size) {
+                throw new ArgumentException();
+            }
+
+            var r = (int) Math.Floor(size / 2f);
+
+            var step1 = Math.Pow(y - r, 2) / 1f;
+            var step2 = Math.Pow(r, 2) - step1;
+            var step3 = Math.Sqrt(step2 * curve) + r;
+            x = (int) Math.Floor(step3);
+
+            return x > 0 && x < size;
+        }
+
+        private static int[][] CalcCurves(double[] curves, int size) {
+            var coords = new int[curves.Length][];
+
+            // Calculate coordinates for all curves
+            for (var curveIndex = 0; curveIndex < curves.Length; curveIndex++) {
+                coords[curveIndex] = new int[size];
+
+                // Calculate coords for current curve
+                for (var y = 0; y < size; y++) {
+                    if (GetEllipseX(size, curves[curveIndex], y, out var x)) {
+                        coords[curveIndex][y] = x;
+                    }
+                }
+            }
+
+            return coords;
+        }
+
+        private static Color[][] StandardizeColors(Color[][] colors) {
+            var standardizedColors = new Color[colors.Length][];
+
+            for (var curve = 0; curve < colors.Length; curve++) {
+                standardizedColors[curve] = new Color[colors[curve].Length];
+
+                for (var y = 0; y < colors[curve].Length; y++) {
+                    var lastDiff = double.MaxValue;
+
+                    foreach (var baseColor in BaseColors) {
+                        var diff = ColorDiff(baseColor, colors[curve][y]);
+                        if (diff > lastDiff) continue;
+
+                        lastDiff = diff;
+                        standardizedColors[curve][y] = Color.FromArgb(baseColor.R, baseColor.G, baseColor.B);
+                    }
+                }
+            }
+
+            return standardizedColors;
+        }
+
+
+        private static readonly Color[] BaseColors = {
+            Color.FromArgb(0x331713),
+            Color.FromArgb(0x6a0810),
+            Color.FromArgb(0xb01b25),
+            Color.FromArgb(0x48fcf8),
+            Color.FromArgb(0x185478),
+            Color.FromArgb(0x241514)
+        };
+
         /// <summary>
         /// Extract pixels from captured image
         /// </summary>
         public void ParseHealth() {
-            var offset = FindBarLocation();
+            var curves = new double[] {1.0f, 0.87, 0.75f, 0.62f, 0.50f, 0.37f, 0.25f, 0.12f, 0.03f};
+            var imgSize = img.Width;
+
+            // Calculate coordinates for all curves
+            var coords = CalcCurves(curves, imgSize);
+
+            // Get colors from all curves
+            var colors = GetColors(img, coords);
+
+            // Draw the curves on the image
+            //LoopArray(coords, (curve, x, y) => img.SetPixel(x, y, Color.White));
+
+            var standardizedColors = StandardizeColors(colors);
+
+            for (var curve = 0; curve < coords.Length; curve++) {
+                for (var y = 0; y < coords[curve].Length; y++) {
+                    var x = coords[curve][y];
+                    var color = standardizedColors[curve][y];
+                    
+                    img.SetPixel(x, y, color);
+                }
+            }
+
+
             return;
+
+            var offset = FindBarLocation();
 
             // Error code. Unable to find health bar offset
             if (offset < 1) {
@@ -257,6 +376,7 @@ namespace Utility {
             }
         }
 
+
         /// <summary>
         /// Finds offset of healthbar
         /// </summary>
@@ -265,25 +385,26 @@ namespace Utility {
             const int xPixelEdgeOffset = 5;
             var xCenter = tracker.CapturePos.Width / 2;
 
+
+            return -1;
+
             // Travel all pixel from top to bottom
             for (var y = 0; y < tracker.CapturePos.Height; y++) {
                 // Mark travelled path
                 if (y > 0) img.SetPixel(xCenter, y - 1, Color.FromArgb(249, 253, 255));
 
+
                 // Scan current horizontal pixel line
-                var xMatches = HorizontalBarScan(img, y, 95.5, out var similarityPercent);
-                
+                //var xMatches = HorizontalBarScan(img, y, 95.5, out var similarityPercent);
+
                 // Assign color codes
-                var similarityColor = (int) Math.Floor(255 * similarityPercent / 100f);
-                var mostCommonColor = xMatches.Aggregate((i, j) => i.Count > j.Count ? i : j);
+                //var similarityColor = (int) Math.Floor(255 * similarityPercent / 100f);
+                //var mostCommonColor = xMatches.Aggregate((i, j) => i.Count > j.Count ? i : j);
 
                 // Write color codes
-                img.SetPixel(tracker.CapturePos.Width - 1, y, mostCommonColor.Color);
-                img.SetPixel(tracker.CapturePos.Width - 2, y, Color.FromArgb(similarityColor, 0, 0));
-                
-                
-                
-                
+                //img.SetPixel(tracker.CapturePos.Width - 1, y, mostCommonColor.Color);
+                //img.SetPixel(tracker.CapturePos.Width - 2, y, Color.FromArgb(similarityColor, 0, 0));
+
 
                 /*if (y < tracker.CapturePos.Height - 5) 
                     img.SetPixel(xCenter, y + 5, Color.FromArgb(133, 255, 52));
@@ -314,7 +435,8 @@ namespace Utility {
             return -1;
         }
 
-        private static ColorMatch[] HorizontalBarScan(Bitmap img, int y, double threshold, out double similarityPercent) {
+        private static ColorMatch[]
+            HorizontalBarScan(Bitmap img, int y, double threshold, out double similarityPercent) {
             // Get all pixels from the specified row
             var pixels = new Color[img.Width];
             for (var x = 0; x < pixels.Length; x++) {
@@ -362,7 +484,7 @@ namespace Utility {
             var g = e1.G - e2.G;
             var b = e1.B - e2.B;
 
-            return 100 - Math.Sqrt((((512 + rMean) * r * r) >> 8) + 4 * g * g + (((767 - rMean) * b * b) >> 8));
+            return Math.Sqrt((((512 + rMean) * r * r) >> 8) + 4 * g * g + (((767 - rMean) * b * b) >> 8));
         }
 
         /// <summary>
